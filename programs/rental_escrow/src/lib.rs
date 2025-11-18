@@ -27,7 +27,7 @@ pub mod rental_escrow {
 }
 
 #[derive(Accounts)]
-#[instruction(apartment_id: u64, amount:u64, rent_time: u64)]
+#[instruction(apartment_id: u64)]
 pub struct InitializeEscrow <'info> {
 #[account(
     init,
@@ -42,6 +42,8 @@ pub escrow_account: Account < 'info, EscrowAccount>,
 #[account(mut)]
 pub guest: Signer<'info>,
 
+///CHECK: The property owner's wallet address, is only stored for reference.
+/// No need to validate because I am just recording when owner wallet receives payment later
 pub owner: UncheckedAccount<'info>,
 
 pub system_program: Program <'info, System>
