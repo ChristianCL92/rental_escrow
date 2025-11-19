@@ -41,43 +41,42 @@ pub mod rental_escrow {
 #[derive(Accounts)]
 #[instruction(apartment_id: u64)]
 pub struct InitializeEscrow <'info> {
-#[account(
+    #[account(
     init,
     payer = guest,
     space= EscrowAccount::LEN,
     seeds = [b"escrow", guest.key().as_ref(), apartment_id.to_le_bytes().as_ref()],
     bump
-)]
-pub escrow_account: Account < 'info, EscrowAccount>,
+    )]
+    pub escrow_account: Account <'info, EscrowAccount>,
 
-#[account(
-    init,
-    payer = guest,
+    #[account(
+    mut,
     token::mint = usdc_mint,
     token:: authority = escrow_account, 
-)]
-pub escrow_token_account: Account < 'info, TokenAccount>,
+    )]
+    pub escrow_token_account: Account <'info, TokenAccount>,
 
-#[account(
+    #[account(
     mut,
     constraint = guest_token_account.owner == guest.key(),
     constraint= guest_token_account.mint == usdc_mint.key(),
 
-)]
-pub guest_token_account: Account<'info, TokenAccount>,
+    )]
+    pub guest_token_account: Account<'info, TokenAccount>,
 
     
-#[account(mut)]
-pub guest: Signer<'info>,
+    #[account(mut)]
+    pub guest: Signer<'info>,
 
-pub usdc_mint: Account <'info, Mint>,
+    pub usdc_mint: Account <'info, Mint>,
 
-///CHECK: The property owner's wallet address, is only stored for reference.
+    ///CHECK: The property owner's wallet address, is only stored for reference.
 /// No need to validate because I am just recording when owner wallet receives payment later
-pub owner: UncheckedAccount<'info>,
+    pub owner: UncheckedAccount<'info>,
 
-pub token_program: Program<'info, Token>,
-pub system_program: Program <'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program <'info, System>,
 
 }
 
