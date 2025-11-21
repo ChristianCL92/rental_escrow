@@ -5,6 +5,8 @@ declare_id!("2mGptfx2M9rTGsGExE9T3yLZ6MHSXLcgiQjD1NoVsfVa");
 
 #[program]
 pub mod rental_escrow {
+    use std::fmt::format;
+
     use super::*;
 
     pub fn initialize(ctx: Context<InitializeEscrow>,
@@ -36,6 +38,56 @@ pub mod rental_escrow {
         msg!("Escrow created! {} USDC transferred to escrow", amount);
         Ok(())
     }
+
+    pub fn release_payment(ctx: Context<ReleasePayment>) -> Result<()> {
+        
+        let amount = ctx.accounts.escrow_account.amount;
+        let apartment_id = ctx.accounts.escrow_account.apartment_id;
+        let guest_key = ctx.accounts.escrow_account.guest_address;
+
+        let escrow_account =  &mut ctx.accounts.escrow_account;
+
+        require!(!escrow_account.rent_ended,
+            EscrowError::PaymentAlreadyReleased
+        );
+
+        let clock = Clock::get()?;
+        require!(clock.unix_timestamp >= escrow_account.rent_time as i64,
+        EscrowError::CheckInDateNotReached
+        );
+
+        escrow_account.rent_started = true;
+        escrow_account.rent_ended = true;
+
+        
+
+        let seeds = &[
+            b"escrow",
+            guest_key.as_ref(),
+            &apartment_id.to_be_bytes(),
+            &[ctx.bumps.escrow_account],
+        ];
+
+        let signer_seeds = &[&seeds[..]];
+
+        let tx_to_owner = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer{
+                from:ctx.accounts.escrow_token_account.to_account_info(),
+                to: ctx.accounts.owner_token_account.to_account_info(),
+                authority: ctx.accounts.escrow_account.to_account_info(),
+            }            
+            , 
+            signer_seeds,
+        );
+
+        token::transfer(tx_to_owner, amount)?;
+
+    msg!("Payment released! {} USDC transferred to owner", amount);
+        Ok(())
+            
+    }
+
 }
 
 #[derive(Accounts)]
@@ -72,11 +124,43 @@ pub struct InitializeEscrow <'info> {
     pub usdc_mint: Account <'info, Mint>,
 
     ///CHECK: The property owner's wallet address, is only stored for reference.
-/// No need to validate because I am just recording when owner wallet receives payment later
+    /// No need to validate because I am just recording when owner wallet receives payment later
     pub owner: UncheckedAccount<'info>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program <'info, System>,
+
+}
+
+#[derive(Accounts)]
+pub struct ReleasePayment <'info> {
+    #[account(
+        mut,
+        seeds =[b"escrow", guest.key().as_ref(), escrow_account.apartment_id.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub escrow_account: Account <'info, EscrowAccount>,
+
+    #[account(
+        mut,
+        token::mint = usdc_mint,
+        token::authority = escrow_account,
+    )]
+    pub escrow_token_account: Account <'info, TokenAccount>,
+
+    #[account(
+        mut,
+        constraint = owner_token_account.owner == escrow_account.owner_address,
+        constraint = owner_token_account.mint == usdc_mint.key(),
+    )]
+    pub owner_token_account: Account<'info, TokenAccount>,
+    
+    ///CHECK: just reading the guest address from escrow_account
+    pub guest :UncheckedAccount <'info> ,
+
+    pub usdc_mint: Account<'info, Mint>,
+    
+    pub token_program: Program<'info, Token>,
 
 }
 
@@ -95,4 +179,12 @@ pub struct EscrowAccount {
 
 impl EscrowAccount {
     pub const LEN: usize = Self::DISCRIMINATOR.len() + Self::INIT_SPACE;
+}
+
+#[error_code]
+pub enum EscrowError {
+    #[msg("Payment has already been released")]
+    PaymentAlreadyReleased,
+    #[msg("Check-in date has not been reached yet")]
+    CheckInDateNotReached,
 }
