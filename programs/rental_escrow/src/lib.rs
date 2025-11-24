@@ -5,8 +5,6 @@ declare_id!("2mGptfx2M9rTGsGExE9T3yLZ6MHSXLcgiQjD1NoVsfVa");
 
 #[program]
 pub mod rental_escrow {
-    use std::fmt::format;
-
     use super::*;
 
     pub fn initialize(ctx: Context<InitializeEscrow>,
@@ -64,7 +62,7 @@ pub mod rental_escrow {
         let seeds = &[
             b"escrow",
             guest_key.as_ref(),
-            &apartment_id.to_be_bytes(),
+            &apartment_id.to_le_bytes(),
             &[ctx.bumps.escrow_account],
         ];
 
@@ -133,7 +131,7 @@ pub struct InitializeEscrow <'info> {
 }
 
 #[derive(Accounts)]
-pub struct ReleasePayment <'info> {
+pub struct ReleasePayment <'info> {  
     #[account(
         mut,
         seeds =[b"escrow", guest.key().as_ref(), escrow_account.apartment_id.to_le_bytes().as_ref()],
@@ -174,7 +172,8 @@ pub struct EscrowAccount {
     pub guest_address: Pubkey,
     pub rent_time: u64,
     pub rent_started: bool,
-    pub rent_ended: bool
+    pub rent_ended: bool,
+    pub reserved: [u8; 64]
 }
 
 impl EscrowAccount {
