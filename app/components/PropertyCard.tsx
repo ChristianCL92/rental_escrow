@@ -66,12 +66,12 @@ const PropertyCard = ({property}: PropertyCardProps) => {
             >
               {feature}
             </span>
-          ))} */
+          ))} 
            {property.features.length > 3 && (
             <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">
               +{property.features.length - 3} more
             </span>
-          )} */
+          )} 
         </div>
       </CardContent>
 
