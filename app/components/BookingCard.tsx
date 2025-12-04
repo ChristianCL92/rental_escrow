@@ -6,22 +6,24 @@ import { Button } from "./ui/button";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { DateRange } from "react-day-picker";
 import { differenceInDays, format } from "date-fns";
+import useRentalProgram from "@/hooks/useRentalProgram";
 
 interface BookingProps {
   pricePerNight: number,
   propertyName: string,
-  propertyId: string,
+  apartmentId: number,
 }
 
- const BookingCard = ({pricePerNight, propertyName, propertyId}: BookingProps) => {
+ const BookingCard = ({pricePerNight, propertyName, apartmentId}: BookingProps) => {
     const {connected} = useWallet()
+    const [loading, setLoading] = useState(false);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(); 
+    const { createEscrow, OWNER_ADDRESS, USDC_MINT, createEscrowTokenAccount } = useRentalProgram();
 
     const {checkIn, checkOut, nights, totalPrice} = useMemo(() => {
       if (!dateRange?.from || !dateRange?.to) {
           return {checkIn: null, checkOut: null, nights: 0, totalPrice: 0};
       }
-
       const nights = differenceInDays(dateRange.to, dateRange.from)
 
       return {
@@ -35,10 +37,27 @@ interface BookingProps {
 
     const handleBooking = async () => {
       if (!checkIn || !checkOut) return;
+      setLoading(true);
+        try {
+          await createEscrowTokenAccount(apartmentId)
+          
+          const txSignature = await createEscrow({
+            apartmentId: apartmentId,
+            amount: totalPrice,
+            checkInDate: checkIn,
+            ownerAddress: OWNER_ADDRESS,
+            usdcMint: USDC_MINT
+          })
+
+          console.log("Booking successful! Transaction signature:", txSignature);
+        } catch (error) {
+          console.error("Booking failed:", error);
+        } finally {
+          setLoading(false);
+        }
       
     }
     
-
     return (
       <div className="rounded-md border bg-white p-6 shadow-lg">
         <h2 className="text-xl font-semibold">Book your stay</h2>
@@ -81,14 +100,16 @@ interface BookingProps {
       <Button
         className="mt-4 w-full"
         size="lg"
-        disabled={!connected || nights === 0}
+        disabled={!connected || nights === 0 || loading}
         onClick={handleBooking}
       >
         {!connected
           ? "Connect Wallet to Book"
           : nights === 0
-            ? "Select Dates"
-            : `Book for ${totalPrice} USDC`}
+          ? "Select Dates"
+          : loading 
+          ? "Processing..." 
+          : `Book for ${totalPrice} USDC`}
       </Button>
       {!connected && (
         <p className="mt-2 text-center text-xs text-muted-foreground">
