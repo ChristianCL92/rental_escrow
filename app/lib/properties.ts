@@ -15,6 +15,7 @@ export const SHARED_AMENITIES = [
 export const properties: Property[] = [
    {
     id: 'room-001',
+    apartmentId: 1,
     name: 'Room 001',
     type: 'room',
     pricePerNight: 30,
@@ -33,6 +34,7 @@ export const properties: Property[] = [
   },
   {
     id: 'room-002',
+    apartmentId: 2,
     name: 'Room 002',
     type: 'room',
     pricePerNight: 30,
@@ -51,6 +53,7 @@ export const properties: Property[] = [
   },
   {
     id: 'room-003',
+    apartmentId: 3,
     name: 'Room 003',
     type: 'room',
     pricePerNight: 30,
@@ -69,6 +72,7 @@ export const properties: Property[] = [
   },
   {
     id: 'room-004',
+    apartmentId: 4,
     name: 'Room 004',
     type: 'room',
     pricePerNight: 30,
@@ -88,6 +92,7 @@ export const properties: Property[] = [
   
   {
     id: 'apartment-cave',
+    apartmentId: 5,
     name: 'Apartment Cave',
     type: 'apartment',
     pricePerNight: 75,
