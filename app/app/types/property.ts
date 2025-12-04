@@ -2,6 +2,7 @@ export type PropertyType = "room" | "apartment" | "camping";
 
 export interface Property {
     id: string,
+    apartmentId: number,
     name: string,
     type: PropertyType,
     pricePerNight: number,
