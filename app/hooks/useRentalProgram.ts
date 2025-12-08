@@ -6,7 +6,8 @@ import { AnchorProvider, Program, BN} from "@coral-xyz/anchor"
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js"
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountIdempotentInstruction } from "@solana/spl-token"
 import idl from "@/lib/idl/rental_escrow.json"
-import { get } from "http";
+import { RentalEscrow } from "@/lib/types/rental_escrow";
+
 
 const PROGRAM_ID = new PublicKey(idl.address);
 
@@ -26,6 +27,34 @@ export interface CreateEscrowParams {
     usdcMint: PublicKey;
 }
 
+export interface ReleasePaymentParams {
+    apartmentId: number;
+    guestAddress: PublicKey;
+}
+
+interface EscrowData {
+    apartmentId: BN;
+    amount: BN;
+    ownerAddress: PublicKey;
+    guestAddress: PublicKey;
+    rentTime: BN;
+    rentStarted: boolean;
+    rentEnded: boolean;
+}
+
+interface EscrowInfo{
+   publicKey: PublicKey;
+  apartmentId: number;
+  amount: number;
+  ownerAddress: PublicKey;
+  guestAddress: PublicKey;
+  checkInDate: Date;
+  rentStarted: boolean;
+  rentEnded: boolean;
+  canRelease: boolean;
+}
+
+
 const useRentalProgram = () => {
   
   const { connection } = useConnection();
@@ -40,12 +69,24 @@ const useRentalProgram = () => {
       wallet,
       {commitment: "confirmed"}
     )
-    return new Program(idl as RentalEscrowIDL, provider)
+    return new Program<RentalEscrow>(idl as RentalEscrow, provider)
  }, [connection, wallet])
 
+
+ const readOnlyProgram = useMemo(() => {
+  if (!wallet || !connected)  return;
+  const provider = new AnchorProvider(connection, {} as any, {commitment: "confirmed"});
+
+  return new Program<RentalEscrow>(idl as RentalEscrow, provider);
+}, [connection])
+ 
  const toUSDCAmount = useCallback((amount: number) => {
     return amount * (Math.pow(10, USDC_DECIMALS));
  }, [])
+
+ const fromUSDCAmount = useCallback((amount: BN) => {
+    return amount.toNumber() / (Math.pow(10, USDC_DECIMALS));
+  }, [])
 
 const getEscrowPDA = useCallback((apartmentId: number): PublicKey | null => {
     if(!publicKey) return null;
@@ -60,6 +101,17 @@ const getEscrowPDA = useCallback((apartmentId: number): PublicKey | null => {
     )
     return escrowPDA;
 }, [publicKey])
+
+const getPdaGuest = useCallback((guestAddress: PublicKey, apartmentId: number): PublicKey => {
+  const apartmentIdBN = new BN(apartmentId);
+
+  const [escrowPDAForGuest] = PublicKey.findProgramAddressSync(
+    [Buffer.from("escrow"), guestAddress.toBuffer(), apartmentIdBN.toArrayLike(Buffer, "le", 8) ],
+     PROGRAM_ID
+    );
+
+  return escrowPDAForGuest
+}, []) 
 
 const createEscrow = useCallback(async ({
     amount,
@@ -100,7 +152,7 @@ const createEscrow = useCallback(async ({
         owner: ownerAddress,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId
-      }).rpc();
+      }as any).rpc();
 
     return tx;
   }, [publicKey, program, wallet, toUSDCAmount, getEscrowPDA])
@@ -147,6 +199,69 @@ const createEscrow = useCallback(async ({
       return signature
       
   }, [wallet, connection, publicKey, getEscrowPDA])
+
+  const getReleasePayment = useCallback(async ({
+    apartmentId,
+    guestAddress
+    }: ReleasePaymentParams):Promise<string> => {
+    if(!wallet || !program) {
+      throw new Error("Wallet not connected or program not initialized");
+    }
+
+    const escrowPda = getPdaGuest(guestAddress, apartmentId);
+
+    const escrowTokenAccount = await getAssociatedTokenAddress(
+      USDC_MINT,
+      escrowPda,
+      true
+    );
+
+    const ownerTokenAccount = await getAssociatedTokenAddress(
+    USDC_MINT,
+    OWNER_ADDRESS
+    )
+
+    const paymentReleaseAmount = await program?.methods.releasePayment().accounts({
+    escrowAccount: getPdaGuest(guestAddress, apartmentId),
+    escrowTokenAccount,
+    ownerTokenAccount,
+    guest: guestAddress,
+    usdcMint: USDC_MINT,
+    tokenProgram: TOKEN_PROGRAM_ID
+  }as any).rpc();
+  
+  return paymentReleaseAmount;
+  }, [program, wallet, getPdaGuest])
+
+  
+  
+  const fetchAllEscrows = useCallback(async():Promise<EscrowInfo[]> => {
+    if(!program) {
+      throw new Error("Program not initialized");
+    }
+
+       const accounts = await program?.account.escrowAccount.all();
+
+       const date = Date.now();
+
+      return accounts.map((account) => {
+      const data = account.account;
+      const checkInDate = new Date(data.rentTime.toNumber() * 1000);
+
+      return {
+        publicKey: account.publicKey,
+        apartmentId: data.apartmentId.toNumber(),
+        amount: fromUSDCAmount(data.amount),
+        ownerAddress: new PublicKey(data.ownerAddress),
+        guestAddress: new PublicKey(data.guestAddress),
+        checkInDate,
+        rentStarted: data.rentStarted,
+        rentEnded: data.rentEnded,
+        canRelease: !data.rentEnded && checkInDate.getTime() <= date
+      };
+    });
+      
+  }, [])
   
   return {
     program,
