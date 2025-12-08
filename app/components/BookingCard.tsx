@@ -10,11 +10,10 @@ import useRentalProgram from "@/hooks/useRentalProgram";
 
 interface BookingProps {
   pricePerNight: number,
-  propertyName: string,
-  apartmentId: number,
+  apartmentId: number
 }
 
- const BookingCard = ({pricePerNight, propertyName, apartmentId}: BookingProps) => {
+ const BookingCard = ({pricePerNight, apartmentId}: BookingProps) => {
     const {connected} = useWallet()
     const [loading, setLoading] = useState(false);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(); 
