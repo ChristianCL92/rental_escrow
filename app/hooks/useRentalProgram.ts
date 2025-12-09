@@ -32,17 +32,7 @@ export interface ReleasePaymentParams {
     guestAddress: PublicKey;
 }
 
-interface EscrowData {
-    apartmentId: BN;
-    amount: BN;
-    ownerAddress: PublicKey;
-    guestAddress: PublicKey;
-    rentTime: BN;
-    rentStarted: boolean;
-    rentEnded: boolean;
-}
-
-interface EscrowInfo{
+export interface EscrowInfo{
    publicKey: PublicKey;
   apartmentId: number;
   amount: number;
@@ -71,20 +61,12 @@ const useRentalProgram = () => {
     )
     return new Program<RentalEscrow>(idl as RentalEscrow, provider)
  }, [connection, wallet])
-
-
- const readOnlyProgram = useMemo(() => {
-  if (!wallet || !connected)  return;
-  const provider = new AnchorProvider(connection, {} as any, {commitment: "confirmed"});
-
-  return new Program<RentalEscrow>(idl as RentalEscrow, provider);
-}, [connection])
  
  const toUSDCAmount = useCallback((amount: number) => {
     return amount * (Math.pow(10, USDC_DECIMALS));
  }, [])
 
- const fromUSDCAmount = useCallback((amount: BN) => {
+  const fromUSDCAmount = useCallback((amount: BN) => {
     return amount.toNumber() / (Math.pow(10, USDC_DECIMALS));
   }, [])
 
@@ -200,7 +182,7 @@ const createEscrow = useCallback(async ({
       
   }, [wallet, connection, publicKey, getEscrowPDA])
 
-  const getReleasePayment = useCallback(async ({
+  const releasePayment = useCallback(async ({
     apartmentId,
     guestAddress
     }: ReleasePaymentParams):Promise<string> => {
@@ -262,16 +244,27 @@ const createEscrow = useCallback(async ({
     });
       
   }, [])
+
+  const isOwner = useMemo(() => {
+    if(!publicKey) return;
+    
+    return publicKey.equals(OWNER_ADDRESS)
+  }, [publicKey])
   
   return {
     program,
     connected,
+    isOwner,
     publicKey,
+    fromUSDCAmount,
     getEscrowPDA,
+    getPdaGuest,
     createEscrow,
     createEscrowTokenAccount,
+    releasePayment,
+    fetchAllEscrows,
     OWNER_ADDRESS,
-    USDC_MINT
+    USDC_MINT,
 
   }
 }
