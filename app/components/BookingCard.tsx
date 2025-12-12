@@ -17,6 +17,7 @@ interface BookingProps {
     const {connected} = useWallet()
     const [loading, setLoading] = useState(false);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(); 
+    const [bookingSuccess, setBookingSuccess] = useState<string | null>(null)
     const { createEscrow, OWNER_ADDRESS, USDC_MINT, createEscrowTokenAccount } = useRentalProgram();
 
     const {checkIn, checkOut, nights, totalPrice} = useMemo(() => {
@@ -47,7 +48,7 @@ interface BookingProps {
             ownerAddress: OWNER_ADDRESS,
             usdcMint: USDC_MINT
           })
-
+          setBookingSuccess(txSignature);
           console.log("Booking successful! Transaction signature:", txSignature);
         } catch (error) {
           console.error("Booking failed:", error);
@@ -92,6 +93,16 @@ interface BookingProps {
           </div>
       </div>
       )}
+       {bookingSuccess && (
+      <div className="mt-4 p-4 bg-green-100 border border-green-400 rounded-lg">
+       <p className="font-semibold text-green-800">Booking Confirmed!</p>
+        <a href={`https://explorer.solana.com/tx/${bookingSuccess}?cluster=devnet`} 
+       target="_blank" 
+       className="text-sm text-green-600 underline">
+      View transaction
+        </a>
+     </div>
+)}
         <div className="mt-4 flex items-center justify-between border-t pt-4">
         <span className="font-semibold">Total</span>
         <span className="text-2xl font-bold">{nights > 0 ? `${totalPrice} USDC` : "-- USDC"}</span>
