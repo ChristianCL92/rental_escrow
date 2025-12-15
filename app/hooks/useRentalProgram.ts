@@ -215,36 +215,6 @@ const createEscrow = useCallback(async ({
   return paymentReleaseAmount;
   }, [program, wallet, getPdaGuest])
 
-  
-  
-  const fetchAllEscrows = useCallback(async():Promise<EscrowInfo[]> => {
-    if(!program) {
-      throw new Error("Program not initialized");
-    }
-
-       const accounts = await program?.account.escrowAccount.all();
-
-       const date = Date.now();
-
-      return accounts.map((account) => {
-      const data = account.account;
-      const checkInDate = new Date(data.rentTime.toNumber() * 1000);
-
-      return {
-        publicKey: account.publicKey,
-        apartmentId: data.apartmentId.toNumber(),
-        amount: fromUSDCAmount(data.amount),
-        ownerAddress: new PublicKey(data.ownerAddress),
-        guestAddress: new PublicKey(data.guestAddress),
-        checkInDate,
-        rentStarted: data.rentStarted,
-        rentEnded: data.rentEnded,
-        canRelease: !data.rentEnded && checkInDate.getTime() <= date
-      };
-    });
-      
-  }, [])
-
   const isOwner = useMemo(() => {
     if(!publicKey) return;
     
@@ -262,7 +232,6 @@ const createEscrow = useCallback(async ({
     createEscrow,
     createEscrowTokenAccount,
     releasePayment,
-    fetchAllEscrows,
     OWNER_ADDRESS,
     USDC_MINT,
 
