@@ -19,7 +19,7 @@ interface PropertyPageProps {
  return (
     <main className="container mx-auto px-4 py-8">
       <Link href="/" className="inline-block mb-6">
-        <Button variant="ghost" className="gap-2">
+        <Button variant="ghost" className="gap-2 cursor-pointer">
           ← Back to Properties
         </Button>
       </Link>
