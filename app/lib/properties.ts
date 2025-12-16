@@ -119,3 +119,8 @@ export const properties: Property[] = [
 export const getPropertiesByType = (type: string):Property[] => {
     return properties.filter(it => it.type === type);
 }
+
+export const getPriceByApartmentId = (apartmentId: number) => {
+  const id = properties.find(propertyId => propertyId.apartmentId === apartmentId);
+  return id?.pricePerNight ?? 30;
+}
