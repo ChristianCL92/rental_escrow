@@ -17,8 +17,6 @@ export const USDC_MINT = new PublicKey(process.env.NEXT_PUBLIC_USDC_MINT_ADDRESS
 
 export const USDC_DECIMALS = 6;
 
-type RentalEscrowIDL = typeof idl;
-
 export interface CreateEscrowParams {
     apartmentId: number;
     amount: number;
