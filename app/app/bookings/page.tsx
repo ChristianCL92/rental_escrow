@@ -46,7 +46,7 @@ if (!connected) {
       <div className="mt-2 flex justify-between">
         <div>
           <div>
-            <p className="font-bold text-lg">You have</p>
+            <p className="font-bold text-lg">Booking history</p>
           </div>
          {bookings.length === 1
           ? (<p className="font-bold text-lg text-muted-foreground">{bookings.length} booking</p>)
