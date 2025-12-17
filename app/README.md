@@ -185,4 +185,3 @@ Frontend tests can be added using Jest or Vitest. Currently focused on integrati
 ## Related
 
 - On-chain program: [../programs/rental_escrow/README.md](../programs/rental_escrow/README.md)
-- Architecture & conventions: [../.github/copilot-instructions.md](../.github/copilot-instructions.md)
