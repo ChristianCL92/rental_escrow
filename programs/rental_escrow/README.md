@@ -269,4 +269,3 @@ programs/rental_escrow/
 ## Related
 
 - Frontend: [../../app/README.md](../../app/README.md)
-- Architecture & conventions: [../../.github/copilot-instructions.md](../../.github/copilot-instructions.md)
