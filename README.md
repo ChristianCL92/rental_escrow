@@ -20,8 +20,7 @@ Frontend (Next.js)           Anchor Program (Rust)           Solana Blockchain
 ```
 rental_escrow/
 ├── README.md                          # This file
-├── .github/
-│   └── copilot-instructions.md        # AI agent guidelines (see section below)
+│   
 ├── app/                               # Next.js frontend (React 19, TypeScript)
 │   ├── hooks/
 │   │   ├── useRentalProgram.ts        # Anchor program interaction, PDA derivation
@@ -147,7 +146,6 @@ The frontend uses `@tanstack/react-query` with stable `queryKey`s (e.g., `['escr
 
 - **[Frontend (app/README.md)](./app/README.md)**: Next.js setup, Wallet integration, component architecture
 - **[On-Chain (programs/rental_escrow/README.md)](./programs/rental_escrow/README.md)**: Anchor program internals, account layout, testing
-- **[AI Agent Guidelines (.github/copilot-instructions.md)](./.github/copilot-instructions.md)**: Conventions and key files for coding agents
 
 ## Testing
 
@@ -176,17 +174,10 @@ anchor test  # Runs tests/rental_escrow.ts in sandbox (recommended)
 **"Account is not executable" on-chain**
 - Verify program ID in IDL matches deployed program ID.
 
-## Contributing
-
-1. Create a feature branch: `git checkout -b feature/my-feature`
-2. Make changes following patterns in `.github/copilot-instructions.md`
-3. Run tests: `anchor test` and `npm run lint`
-4. Open a PR with a summary of changes
-
 ## License
 
-ISC
+MIT License
 
 ---
 
-**Questions?** See individual READMEs in `app/` and `programs/rental_escrow/`, or review `.github/copilot-instructions.md` for architecture details.
+**Questions?** See individual READMEs in `app/` and `programs/rental_escrow/`
