@@ -49,7 +49,6 @@ interface BookingProps {
             usdcMint: USDC_MINT
           })
           setBookingSuccess(txSignature);
-          console.log("Booking successful! Transaction signature:", txSignature);
         } catch (error) {
           console.error("Booking failed:", error);
         } finally {

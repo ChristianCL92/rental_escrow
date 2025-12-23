@@ -31,8 +31,7 @@ const AdminPage = () => {
         guestAddress: escrow.guestAddress
     },
     {
-        onSuccess: (transaction) => {
-            console.log("Payment release complete", transaction);
+        onSuccess: () => {
             setReleasingId(null)
         },
         onError: (err) => {
