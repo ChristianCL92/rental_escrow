@@ -85,7 +85,6 @@ if (!connected) {
             >
               {isLoading ? "Loading..." : "Refresh"}
             </button>
-            <WalletMultiButton />
           </div>
         </div>
         {isError && (
