@@ -161,6 +161,16 @@ anchor test  # Runs tests/rental_escrow.ts in sandbox (recommended)
 4. After check-in date passes, release payment as owner
 5. Verify USDC appears in owner's token account on Solana Explorer
 
+## Demo
+
+🌐 **Live App:** (https://el-solar.vercel.app)
+
+📹 **Admin Dashboard:** Only available to admin
+
+>Connect any Solana wallet to test the booking flow on devnet.
+
+> Want to test the full booking flow? Reach out and I'll send you devnet USDC — [LinkedIn](https://www.linkedin.com/in/chrlono/)
+
 ## Troubleshooting
 
 **"Program not initialized" error in frontend**
