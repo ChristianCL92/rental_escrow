@@ -147,7 +147,7 @@ const escrowSig = await createEscrow({
 
 ## Styling
 
-This project uses **Tailwind CSS** with the shadcn/ui component library. Customize colors and theme in `tailwind.config.ts`.
+This project uses **Tailwind CSS** with the shadcn/ui component library. Customize colors and theme in `global.css`.
 
 ## Testing
 
