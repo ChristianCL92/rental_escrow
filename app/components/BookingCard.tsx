@@ -5,7 +5,7 @@ import { Calendar } from "./ui/calendar";
 import { Button } from "./ui/button";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { DateRange } from "react-day-picker";
-import { differenceInDays, format } from "date-fns";
+import { differenceInDays, format, startOfDay } from "date-fns";
 import useRentalProgram from "@/hooks/useRentalProgram";
 
 interface BookingProps {
@@ -71,6 +71,7 @@ interface BookingProps {
           onSelect={setDateRange}
           numberOfMonths={1}
           className="rounded-lg border"
+          disabled={(date) => date < startOfDay(new Date())}
           startMonth={new Date()}
         />
       </div>
