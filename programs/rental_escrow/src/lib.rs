@@ -161,6 +161,42 @@ pub struct ReleasePayment <'info> {
     pub token_program: Program<'info, Token>,
 
 }
+#[derive(Accounts)]
+pub struct CancelBooking <'info> {
+    #[account(
+        mut,
+        close=guest,
+        seeds=[b"escrow", guest.key().as_ref(), escrow_account.apartment_id.to_le_bytes().as_ref()],
+        bump,
+        constraint=escrow_account.guest_address==guest.key()
+
+    )]
+    pub escrow_account: Account<'info, EscrowAccount>,
+
+    #[account(
+        mut,
+        token::mint = usdc_mint,
+        token::authority = escrow_account
+    )]
+    pub escrow_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub guest: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint=guest_token_account.owner==guest.key(),
+        constraint=guest_token_account.mint==usdc_mint.key()
+        
+    )]
+    pub guest_token_account: Account<'info, TokenAccount>,
+
+    pub usdc_mint: Account<'info, Mint>,
+    
+    pub token_program: Program<'info, Token>,
+
+    pub system_program: Program<'info, System>
+}
 
 
 #[account]
