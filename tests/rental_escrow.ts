@@ -27,10 +27,18 @@ const guest = provider.wallet;
 const owner = anchor.web3.Keypair.generate()
 
 let escrowPDA: anchor.web3.PublicKey;
+let escrowPDA2: anchor.web3.PublicKey;
+let escrowPDA3: anchor.web3.PublicKey;
 let escrowTokenAccount: any;
+let escrowTokenAccount2: any;
+let escrowTokenAccount3: any;
 const apartmentId = new anchor.BN(1);
+const apartmentId2 = new anchor.BN(2);
+const apartmentId3 = new anchor.BN(3);
 const amount = new anchor.BN(500_000000);
 let rentTime: anchor.BN;
+let rentTime2: anchor.BN;
+let rentTime3: anchor.BN;
 
 it("Should create USDC mint and fund guest", async() => {
 console.log("\n creating fake USDC mint for testing...");
@@ -264,8 +272,172 @@ it("Should fail to release the payment before the rent time", async () => {
     }
   
   })
+
+  it("should create a second escrow for testing..", async() => {
+      rentTime2 = new anchor.BN(Math.floor(Date.now()/ 1000) + 30)
+
+    const escrowPDAResult = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("escrow"),
+        guest.publicKey.toBuffer(),
+        apartmentId2.toArrayLike(Buffer, "le", 8)
+      ],
+      program.programId
+    );
+
+    escrowPDA2 = escrowPDAResult[0]
+
+      console.log("Escrow PDA 2:", escrowPDA2.toString());
+
+      escrowTokenAccount2 = await getOrCreateAssociatedTokenAccount(
+        provider.connection,
+        guest.payer,
+        usdcMint,
+        escrowPDA2,
+        true
+      )
+
+      console.log("escrow token account2 created with address:", escrowTokenAccount2.address.toString())
+
+      await mintTo(
+        provider.connection,
+        guest.payer,
+        usdcMint,
+        guestTokenAccount.address,
+        guest.publicKey,
+        500_000000 
+      )
+
+      const tx = await program.methods.initialize(
+        apartmentId2, amount, rentTime2
+      ).accounts({
+        escrowAccount: escrowPDA2,
+        escrowTokenAccount: escrowTokenAccount2.address,
+        guestTokenAccount: guestTokenAccount.address,
+        usdcMint: usdcMint,
+        guest: guest.publicKey,
+        owner: owner.publicKey,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      } as any).rpc()
+
+      console.log("second escrow account created", tx);
+
+      const escrowBalance = await getAccount(provider.connection, escrowTokenAccount2.address);
+      console.log("Balance inside token escrow account", Number(escrowTokenAccount2.amount)/ 1_000000, "USDC");
+
+        assert.equal(Number(escrowBalance.amount), 500_000000, "Escrow 2 should hold 500 USDC");
+
+    })
+
+    it("Should successfully cancel booking before check-in", async() => {
+      
+      const balanceBeforeCancel = await getAccount(provider.connection, guestTokenAccount.address);
+      console.log("Balance before canceling room is", Number(balanceBeforeCancel.amount)/1_000000, "USDC");
+
+      const tx = await program.methods.cancelBooking().accounts({
+      escrowAccount: escrowPDA2,
+      escrowTokenAccount: escrowTokenAccount2.address,
+      guestTokenAccount: guestTokenAccount.address,
+      guest: guest.publicKey,
+      usdcMint,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      } as any).rpc();
+
+      console.log("✅ Cancel transaction:", tx);
+
+      const balanceAfterCancel = await getAccount(provider.connection, guestTokenAccount.address);
+      console.log("  Guest balance AFTER:", Number(balanceAfterCancel.amount) / 1_000000, "USDC");
+
+      const fundsReceived = Number(balanceAfterCancel.amount) - Number(balanceBeforeCancel.amount);
+      console.log("Funds received", fundsReceived/1_000000, "USDC");
+
+      assert.equal(fundsReceived, 500_000000, "Guest should receive 500 USDC refund");
+    
+      try {
+       await program.account.escrowAccount.fetch(escrowPDA2);
+        assert.fail("Escrow account is not closed!");
+        } catch (error) {
+        console.log("✅ Escrow account successfully closed!");
+        assert.include(error.message, "Account does not exist")
+        }
+      //Verifying that Token escrow account is closed
+      try {
+        await getAccount(provider.connection, escrowTokenAccount2.address);
+        assert.fail("Escrow token account is not closed!");
+      } catch (error) {
+          console.log("✅ Escrow token account successfully closed!");
+      }
+       console.log("\n🎉 Cancel booking test passed!");
+      })
+
+    it("should fail to cancel booking after check-in started", async() => {
+        rentTime3 = new anchor.BN(Math.floor(Date.now() / 1000) + 2);
+
+        [escrowPDA3] = anchor.web3.PublicKey.findProgramAddressSync(
+          [Buffer.from("escrow"),
+           guest.publicKey.toBuffer(), 
+           apartmentId3.toArrayLike(Buffer,"le", 8)
+          ],
+        program.programId
+        )
+
+        console.log("PDA3 created for test 3", escrowPDA3);
+
+        escrowTokenAccount3 = await getOrCreateAssociatedTokenAccount(
+          provider.connection,
+           guest.payer,
+          usdcMint,
+           escrowPDA3,
+            true
+          )
+
+        await mintTo(
+          provider.connection,
+          guest.payer,
+          usdcMint,
+          guestTokenAccount.address,
+          guest.publicKey,
+          500_000000,
+        )
+
+        await program.methods.initialize(apartmentId3, amount, rentTime3).accounts({
+          escrowAccount: escrowPDA3,
+          escrowTokenAccount: escrowTokenAccount3.address,
+          guestTokenAccount: guestTokenAccount.address,
+          usdcMint,
+          guest: guest.publicKey,
+          owner: owner.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId
+        } as any).rpc();
+
+        await new Promise((resolve) => setTimeout(resolve, 3000))
+
+        console.log("Check-in time passed, trying to cancel booking...");
+
+        try {
+          await program.methods.cancelBooking().accounts({
+          escrowAccount: escrowPDA3,
+          escrowTokenAccount: escrowTokenAccount3.address,
+          guest: guest.publicKey,
+          guestTokenAccount: guestTokenAccount.address,
+          usdcMint,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        } as any).rpc();
+
+          assert.fail("Cancel should have failed after check-in!");
+        } catch (error) {
+          console.log("Successfully failed to cancel booking!", error.message);
+
+          assert.include(
+          error.message,
+        "CannotCancelAfterCheckIn",
+        "Should fail with CannotCancelAfterCheckIn"
+          );
+    console.log("✅ Correctly prevented late cancellation!");
+        }
+      
+
+  })
+
 })
-
-
-
-
