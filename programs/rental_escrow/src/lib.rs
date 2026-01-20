@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint };
+use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint, CloseAccount};
 
 declare_id!("2mGptfx2M9rTGsGExE9T3yLZ6MHSXLcgiQjD1NoVsfVa");
 
@@ -85,6 +85,54 @@ pub mod rental_escrow {
         Ok(())
             
     }
+
+  pub fn cancel_booking(ctx: Context<CancelBooking>) -> Result<()> {
+     let escrow_account = &ctx.accounts.escrow_account;
+    
+    let clock = Clock::get()?;
+    require!(clock.unix_timestamp < escrow_account.rent_time as i64,
+    EscrowError::CannotCancelAfterCheckIn
+    );
+
+    let apartment_id = escrow_account.apartment_id;
+    let guest_address = escrow_account.guest_address;
+    let amount = escrow_account.amount;
+
+    let seeds = &[
+        b"escrow", guest_address.as_ref(),
+        &apartment_id.to_le_bytes(),
+        &[ctx.bumps.escrow_account]
+     ];
+
+     let signer_seeds= &[&seeds[..]];    
+
+     let tx_to_guest = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+         Transfer{
+           from: ctx.accounts.escrow_token_account.to_account_info(),
+           to: ctx.accounts.guest_token_account.to_account_info(),
+           authority: ctx.accounts.escrow_account.to_account_info() 
+         }, 
+         signer_seeds);
+
+         token::transfer(tx_to_guest, amount)?;
+
+         let close_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+             CloseAccount {
+                account: ctx.accounts.escrow_token_account.to_account_info(),
+                destination: ctx.accounts.guest.to_account_info(),
+                authority: ctx.accounts.escrow_account.to_account_info()
+             },
+             signer_seeds);
+
+             token::close_account(close_ctx)?;
+
+             msg!("Booking cancelled with {} USDC being returned to guest", amount);
+
+             Ok(())
+
+  }
 
 }
 
@@ -222,4 +270,6 @@ pub enum EscrowError {
     PaymentAlreadyReleased,
     #[msg("Check-in date has not been reached yet")]
     CheckInDateNotReached,
+    #[msg("Cannot cancel booking after check-in date")]
+    CannotCancelAfterCheckIn
 }
