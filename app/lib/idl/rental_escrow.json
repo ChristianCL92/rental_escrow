@@ -211,7 +211,8 @@
           "writable": true
         },
         {
-          "name": "guest"
+          "name": "guest",
+          "writable": true
         },
         {
           "name": "usdc_mint"
@@ -254,6 +255,11 @@
       "code": 6002,
       "name": "CannotCancelAfterCheckIn",
       "msg": "Cannot cancel booking after check-in date"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidGuest",
+      "msg": "Invalid guest address"
     }
   ],
   "types": [
