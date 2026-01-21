@@ -8,12 +8,26 @@ skip-lint = false
 [programs.localnet]
 rental_escrow = "2mGptfx2M9rTGsGExE9T3yLZ6MHSXLcgiQjD1NoVsfVa"
 
+[programs.devnet]
+rental_escrow = "2mGptfx2M9rTGsGExE9T3yLZ6MHSXLcgiQjD1NoVsfVa"
+
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+startup_wait = 10000
+bind_address = "127.0.0.1"
+
+[[test.validator.clone]]
+address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+
+[[test.validator.clone]]
+address = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"

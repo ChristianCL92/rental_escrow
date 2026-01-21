@@ -8,6 +8,74 @@
   },
   "instructions": [
     {
+      "name": "cancel_booking",
+      "discriminator": [
+        139,
+        162,
+        116,
+        202,
+        78,
+        140,
+        139,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "escrow_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "guest"
+              },
+              {
+                "kind": "account",
+                "path": "escrow_account.apartment_id",
+                "account": "EscrowAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_token_account",
+          "writable": true
+        },
+        {
+          "name": "guest",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "guest_token_account",
+          "writable": true
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initialize",
       "discriminator": [
         175,
@@ -143,7 +211,8 @@
           "writable": true
         },
         {
-          "name": "guest"
+          "name": "guest",
+          "writable": true
         },
         {
           "name": "usdc_mint"
@@ -181,6 +250,16 @@
       "code": 6001,
       "name": "CheckInDateNotReached",
       "msg": "Check-in date has not been reached yet"
+    },
+    {
+      "code": 6002,
+      "name": "CannotCancelAfterCheckIn",
+      "msg": "Cannot cancel booking after check-in date"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidGuest",
+      "msg": "Invalid guest address"
     }
   ],
   "types": [
