@@ -81,6 +81,18 @@ pub mod rental_escrow {
 
         token::transfer(tx_to_owner, amount)?;
 
+        let close_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+             CloseAccount{
+                account: ctx.accounts.escrow_token_account.to_account_info(),
+                destination: ctx.accounts.guest.to_account_info(),
+                authority: ctx.accounts.escrow_account.to_account_info()
+             },
+             signer_seeds,
+        );
+
+        token::close_account(close_ctx)?;
+
     msg!("Payment released! {} USDC transferred to owner", amount);
         Ok(())
             
@@ -182,6 +194,7 @@ pub struct InitializeEscrow <'info> {
 pub struct ReleasePayment <'info> {  
     #[account(
         mut,
+        close=guest,
         seeds =[b"escrow", guest.key().as_ref(), escrow_account.apartment_id.to_le_bytes().as_ref()],
         bump
     )]
@@ -201,7 +214,11 @@ pub struct ReleasePayment <'info> {
     )]
     pub owner_token_account: Account<'info, TokenAccount>,
     
-    ///CHECK: just reading the guest address from escrow_account
+    ///CHECK: Guest address that originally made the booking, receives rent refund
+    #[account(
+        mut,
+        constraint=guest.key() == escrow_account.guest_address @ EscrowError::InvalidGuest
+    )]
     pub guest :UncheckedAccount <'info> ,
 
     pub usdc_mint: Account<'info, Mint>,
@@ -271,5 +288,7 @@ pub enum EscrowError {
     #[msg("Check-in date has not been reached yet")]
     CheckInDateNotReached,
     #[msg("Cannot cancel booking after check-in date")]
-    CannotCancelAfterCheckIn
+    CannotCancelAfterCheckIn,
+    #[msg("Invalid guest address")]
+    InvalidGuest,
 }
