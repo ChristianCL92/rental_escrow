@@ -22,7 +22,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "yarn"
+          
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -55,7 +55,7 @@ jobs:
           solana config set --url localhost
 
       - name: Install dependencies
-        run: yarn install
+        run: npm install
 
       - name: Run Anchor tests
         run: anchor test
