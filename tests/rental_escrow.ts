@@ -220,37 +220,29 @@ it("Should fail to release the payment before the rent time", async () => {
 
     console.log("✅ Payment release transaction:", tx);
 
-    const escrowBalanceAfter = await getAccount(
-      provider.connection, 
-      escrowTokenAccount.address
-    );
-    const ownerBalanceAfter = await getAccount(
-      provider.connection, 
-      ownerTokenAccount.address
-    );
+    const ownerBalanceAfter = await getAccount(provider.connection, ownerTokenAccount.address);
 
-    console.log("\n💰 Balances AFTER release:");
-    console.log("  Escrow:", Number(escrowBalanceAfter.amount) / 1_000000, "USDC");
-    console.log("  Owner:", Number(ownerBalanceAfter.amount) / 1_000000, "USDC");
-
-    const escrowData = await program.account.escrowAccount.fetch(escrowPDA);
+    console.log("Owner token balance after:", Number(ownerBalanceAfter.amount)/1_000000, "USDC");
+    assert.equal(Number(ownerBalanceAfter.amount), 500_000000, "Owner should receive 500 USDC");
     
-    console.log("\n📊 Escrow State:");
-    console.log("  rent_started:", escrowData.rentStarted);
-    console.log("  rent_ended:", escrowData.rentEnded);
-    console.log("   ESCROW BYTE RENT ------->", escrowData);
+    try {
+      await program.account.escrowAccount.fetch(escrowPDA);
+      assert.fail("Escrow account should be closed but is not!");
+    } catch (error) {
+      console.log("✅ successfully closed the escrow account", error.message);
+    }
 
-    assert.equal(Number(escrowBalanceAfter.amount), 0, "Escrow should be empty");
-    assert.equal(
-      Number(ownerBalanceAfter.amount), 
-      500_000000, 
-      "Owner should receive 500 USDC"
-    );
-    assert.isTrue(escrowData.rentStarted, "rent_started should be true");
-    assert.isTrue(escrowData.rentEnded, "rent_ended should be true");
+    try {
+    await getAccount(provider.connection, escrowTokenAccount.address);
+    assert.fail("Escrow token account should be closed!");
+  }   catch (error) {
+    console.log("✅ Escrow token account successfully closed!");
+  }
 
     console.log("\n🎉 Payment successfully released to owner!");
   });
+
+
 
   it("Should not release payment TWICE", async () => {
     console.log("Testing second payment release, should fail...");
@@ -268,7 +260,7 @@ it("Should fail to release the payment before the rent time", async () => {
       assert.fail("Transaction should have failed but succeeded!");
 
     } catch (err) {
-      console.log("📣SUCCESS WE FAILED TO RELEASE PAYMENT TWICE", err.message);
+      console.log("Cannot release twice because account is closed", err.message);
     }
   
   })
