@@ -1,3 +1,9 @@
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/rental_escrow.json`.
+ */
 export type RentalEscrow = {
   "address": "2mGptfx2M9rTGsGExE9T3yLZ6MHSXLcgiQjD1NoVsfVa",
   "metadata": {
@@ -7,6 +13,74 @@ export type RentalEscrow = {
     "description": "Created with Anchor"
   },
   "instructions": [
+    {
+      "name": "cancelBooking",
+      "discriminator": [
+        139,
+        162,
+        116,
+        202,
+        78,
+        140,
+        139,
+        90
+      ],
+      "accounts": [
+        {
+          "name": "escrowAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "guest"
+              },
+              {
+                "kind": "account",
+                "path": "escrow_account.apartment_id",
+                "account": "escrowAccount"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrowTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "guest",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "guestTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "usdcMint"
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
     {
       "name": "initialize",
       "discriminator": [
@@ -143,7 +217,8 @@ export type RentalEscrow = {
           "writable": true
         },
         {
-          "name": "guest"
+          "name": "guest",
+          "writable": true
         },
         {
           "name": "usdcMint"
@@ -181,6 +256,16 @@ export type RentalEscrow = {
       "code": 6001,
       "name": "checkInDateNotReached",
       "msg": "Check-in date has not been reached yet"
+    },
+    {
+      "code": 6002,
+      "name": "cannotCancelAfterCheckIn",
+      "msg": "Cannot cancel booking after check-in date"
+    },
+    {
+      "code": 6003,
+      "name": "invalidGuest",
+      "msg": "Invalid guest address"
     }
   ],
   "types": [
