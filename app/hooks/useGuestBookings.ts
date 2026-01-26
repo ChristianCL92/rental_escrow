@@ -1,13 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import useRentalProgram, { EscrowInfo } from "./useRentalProgram";
+import useRentalProgram, { CancelBookingParams, EscrowInfo } from "./useRentalProgram";
 
 const useGuestBookings = () => {
  const {publicKey} = useWallet();
- const { fromUSDCAmount, program} = useRentalProgram();
- 
+ const { fromUSDCAmount, program, cancelBooking} = useRentalProgram();
 
+ const queryClient = useQueryClient();
  const bookingsQuery = useQuery<EscrowInfo[]>({
   queryKey: ["guest-booking", publicKey?.toBase58()],
 
@@ -55,6 +55,13 @@ const useGuestBookings = () => {
   retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000)
   })
 
+  const mutation = useMutation({
+    mutationFn: (params: CancelBookingParams) => cancelBooking(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ["guest-booking"]});
+    },  
+  })
+
   return {
     bookings: bookingsQuery.data ?? [],
     isLoading: bookingsQuery.isLoading,
@@ -65,7 +72,11 @@ const useGuestBookings = () => {
     hasBookings: (bookingsQuery.data?.length ?? 0) > 0,
     activeBookings: bookingsQuery.data?.filter((b) => !b.rentEnded && b.checkInDate.getTime() <= Date.now()) ?? [],
     completedBookings: bookingsQuery.data?.filter((b) => b.rentEnded) ?? [],
-    upcomingBookings: bookingsQuery.data?.filter((b) => !b.rentEnded && b.checkInDate.getTime() > Date.now()) ?? []
+    upcomingBookings: bookingsQuery.data?.filter((b) => !b.rentEnded && b.checkInDate.getTime() > Date.now()) ?? [],
+
+    cancelBookingMutation: mutation.mutate,
+    cancelError: mutation.error,
+    isCanceling: mutation.isPending
 
   };
 
