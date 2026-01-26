@@ -6,10 +6,42 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import useGuestBookings from "@/hooks/useGuestBookings";
 import GuestBookings from "@/components/GuestBookings";
+import { useState } from "react";
 
 export const GuestPage = () => {
-    const {bookings, refetch,  isLoading, error, isError, hasBookings, activeBookings, completedBookings, upcomingBookings} = useGuestBookings();
+    const {
+            bookings,
+            refetch,
+            isLoading,
+            error,
+            isError,
+            hasBookings,
+            activeBookings,
+            completedBookings,
+            upcomingBookings,
+            cancelBookingMutation,
+            cancelError,
+            isCanceling
+          } = useGuestBookings();
+
     const  { connected} = useWallet();
+    const [ cancelId, setCancelId ] = useState<number | null>(null);
+    
+
+    const handleCancelation = (apartmentId: number ) => {
+          setCancelId(apartmentId);
+
+    cancelBookingMutation(
+      { apartmentId },
+
+      {
+        onSettled: () => {
+          setCancelId(null);
+        }
+      }
+  )
+
+}
 
 if (!connected) {
     return (
@@ -94,7 +126,14 @@ if (!connected) {
       <div className="grid gap-4 md:grid-cols-2 mt-6">
       {bookings.map((booking) => {
         return(
-          <GuestBookings key={booking.publicKey.toBase58()} booking={booking} />
+          <GuestBookings 
+          key={booking.publicKey.toBase58()} 
+          booking={booking}
+          isCanceling={isCanceling}
+          onCancel={handleCancelation}
+          cancelingId={cancelId}
+          cancelError={cancelError}
+          />
         )}
         )}
       </div>
