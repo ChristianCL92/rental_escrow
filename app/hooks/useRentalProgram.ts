@@ -30,6 +30,10 @@ export interface ReleasePaymentParams {
     guestAddress: PublicKey;
 }
 
+export interface CancelBookingParams {
+  apartmentId: number
+}
+
 export interface EscrowInfo{
    publicKey: PublicKey;
   apartmentId: number;
@@ -213,6 +217,39 @@ const createEscrow = useCallback(async ({
   return paymentReleaseAmount;
   }, [program, wallet, getPdaGuest])
 
+  const cancelBooking = useCallback(async({ 
+     apartmentId
+  }: CancelBookingParams): Promise<string> => {
+
+  if(!wallet || !program) {
+    throw new Error("Either wallet connection is missing or program unavailable");
+  }
+
+  const escrowPda = getPdaGuest(wallet.publicKey, apartmentId);
+
+  const escrowTokenAccount = await getAssociatedTokenAddress(
+    USDC_MINT,
+    escrowPda,
+    true,
+  );
+
+  const guestTokenAccount = await getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
+
+  const txSignature = await program?.methods.cancelBooking().accounts({
+    escrowAccount: escrowPda,
+    escrowTokenAccount,
+    guest: wallet.publicKey,
+    guestTokenAccount,
+    usdcMint: USDC_MINT,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    systemProgram: SystemProgram.programId,
+  } as any ).rpc();
+
+  
+    return txSignature
+
+  }, [program, wallet, getPdaGuest])
+
   const isOwner = useMemo(() => {
     if(!publicKey) return;
     
@@ -230,6 +267,7 @@ const createEscrow = useCallback(async ({
     createEscrow,
     createEscrowTokenAccount,
     releasePayment,
+    cancelBooking,
     OWNER_ADDRESS,
     USDC_MINT,
 
