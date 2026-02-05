@@ -21,7 +21,8 @@ export const POST = async (request: NextRequest) => {
         .select("id, check_in_date, check_out_date, status")
         .eq("apartment_id", apartmentId)
         .in("status", ["pending", "confirmed"])
-        .or(`check_in_date.lt.${checkOutDate},check_out_date.gt.${checkInDate}`)
+        .lt("check_in_date", checkOutDate)
+        .gt("check_out_date", checkInDate)
 
         if (error) {
             console.error("Supabase error:", error);
