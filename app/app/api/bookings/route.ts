@@ -38,7 +38,6 @@ export const POST = async (request: NextRequest) => {
     return NextResponse.json(
         { error: "Failed to create booking" },
         {status: 500 }
-    
         )
     }
 
@@ -90,7 +89,10 @@ export const PATCH = async ( request: NextRequest) => {
             )
         }
         
-        return NextResponse.json({ booking:data })
+        return NextResponse.json(
+            { booking:data },
+             {status: 200}
+            )
     } catch (error) {
         console.error("Failed to update database", error);
         return NextResponse.json(
@@ -113,15 +115,23 @@ export const DELETE = async (req: NextRequest) => {
 
         const supabase = createServerClient();
 
-        const { error } = await supabase
+        const { data, error } = await supabase
         .from("bookings")
         .delete()
         .eq("id", bookingId)
         .eq("guest_wallet", guestWallet)
+        .select()
+
+        if(!data || data.length === 0) {
+            return NextResponse.json(
+                { error: "Booking not found" },
+                { status: 404 }
+            )
+        }
 
         if(error) {
             return NextResponse.json(
-                {error: "Unable to perform delete operation"},
+                { error: "Unable to perform delete operation"},
                 { status: 500 }
             )
         }
