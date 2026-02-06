@@ -95,7 +95,7 @@ const useBookingAPI = () => {
             }
     }, [publicKey])
 
-    const confirmBooking = useCallback(async (bookingId: string) => {
+    const confirmBooking = useCallback(async (bookingId: string, status: "confirmed" | "cancelled") => {
         setIsConfirming(true);
         setError(null);
         try {
@@ -104,7 +104,7 @@ const useBookingAPI = () => {
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ bookingId, status: "confirmed" })
+                body: JSON.stringify({ bookingId, status})
             })
 
             if (!response.ok) {
