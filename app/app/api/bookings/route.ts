@@ -1,6 +1,43 @@
 import {NextRequest, NextResponse} from "next/server";
 import { createServerClient } from "@/lib/supabase/initSupabase";
 
+export const GET = async (req:NextRequest) => {
+    const { searchParams } = new URL(req.url);
+    const apartmentId = searchParams.get("apartmentId");
+    const guestWallet = searchParams.get("guestWallet");
+    const checkInDate = searchParams.get("checkInDate");
+
+    try {
+        if (!apartmentId || !guestWallet || !checkInDate) {
+            return NextResponse.json({error: "Missing required parameters"}, {status: 400})
+        }
+
+        const supabase = createServerClient();
+
+        const { data, error } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("apartment_id", apartmentId)
+        .eq("check_in_date", checkInDate)
+        .eq("guest_wallet", guestWallet)
+        .single();
+
+        if(error) {
+            return NextResponse.json(
+                {error: "Error retreiving data"},
+                {status: 404}
+        )
+        }
+        
+        return NextResponse.json({ booking: data }, { status: 200 })
+    } catch (error) {
+        return NextResponse.json(
+            {error: "Internal server error"},
+             {status: 500}
+        );
+    }
+}
+
 export const POST = async (request: NextRequest) => {
     try {
       const {apartmentId, checkInDate, checkOutDate, guestWallet} = await request.json();
