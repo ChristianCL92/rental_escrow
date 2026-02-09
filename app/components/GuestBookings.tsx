@@ -10,7 +10,7 @@ interface BookingProps {
 }
 
 interface GuestBookingProps extends BookingProps {
-  onCancel: (apartmentId:number) => void;
+  onCancel: (apartmentId:number, checkInDate: Date) => void;
     isCanceling: boolean,
     cancelingId: number | null;
     cancelError: Error | null;
@@ -76,7 +76,7 @@ const GuestBookingCard = ({ booking, onCancel, isCanceling, cancelingId, cancelE
           <div className="flex items-center gap-2">
             <Delete className="h-4 w-4"/>
           <button 
-            onClick={() => onCancel(booking.apartmentId)}
+            onClick={() => onCancel(booking.apartmentId, booking.checkInDate)}
             disabled={isThisOneCanceling}
             className="p-2 border rounded-lg text-sm font-bold hover:bg-red-100 
                  text-red-600 disabled:opacity-50 cursor-pointer"
