@@ -1,6 +1,5 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useCallback, useState } from "react";
-import { json } from "stream/consumers";
 
 interface AvailabilityParams {
     apartmentId: number;
@@ -40,7 +39,7 @@ const useBookingAPI = () => {
             }
                return await response.json();
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Internal error message"
+            const message = error instanceof Error ? error.message : "failed to get bookingId"
             setError(message);
             throw error;
         }
