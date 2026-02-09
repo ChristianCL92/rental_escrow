@@ -1,5 +1,6 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useCallback, useState } from "react";
+import {format} from "date-fns";
 
 interface AvailabilityParams {
     apartmentId: number;
@@ -7,8 +8,8 @@ interface AvailabilityParams {
     checkOutDate: Date;
 }
 
-const formatDate = (date: Date):string => {
-    return date.toISOString().split("T")[0];
+const formatDate = (date: Date): string => {
+    return format(date, "yyyy-MM-dd");
 }; 
 
 const useBookingAPI = () => {
@@ -30,7 +31,7 @@ const useBookingAPI = () => {
                 checkInDate: formatDate(checkInDate),
                 guestWallet: publicKey.toBase58()
             })
-            const response = await fetch(`/api/bookings/${params}`);
+            const response = await fetch(`/api/bookings?${params}`);
 
             if (!response.ok) {
                 console.log("Response could not be resolved properly");
@@ -121,7 +122,7 @@ const useBookingAPI = () => {
             }
     }, [publicKey])
 
-    const confirmBooking = useCallback(async (bookingId: string, status: "confirmed" | "cancelled") => {
+    const updateBooking = useCallback(async (bookingId: string, status: "confirmed" | "cancelled") => {
         setIsConfirming(true);
         setError(null);
         try {
@@ -185,7 +186,7 @@ const useBookingAPI = () => {
         error,
         createPending,
         isCreating,
-        confirmBooking,
+        updateBooking,
         isConfirming,
         rollbackBooking,
         isRollback
