@@ -7,6 +7,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { DateRange } from "react-day-picker";
 import { differenceInDays, format, startOfDay } from "date-fns";
 import useRentalProgram from "@/hooks/useRentalProgram";
+import useBookingAPI from "@/hooks/useBookingAPI";
 
 interface BookingProps {
   pricePerNight: number,
@@ -16,9 +17,17 @@ interface BookingProps {
  const BookingCard = ({pricePerNight, apartmentId}: BookingProps) => {
     const {connected} = useWallet()
     const [loading, setLoading] = useState(false);
+    const [bookingError, setBookingError] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(); 
     const [bookingSuccess, setBookingSuccess] = useState<string | null>(null)
     const { createEscrow, OWNER_ADDRESS, USDC_MINT, createEscrowTokenAccount } = useRentalProgram();
+    const {
+      checkDatesAvailable,
+      createPending,
+      confirmBooking,
+      rollbackBooking,
+    } = useBookingAPI();
+
 
     const {checkIn, checkOut, nights, totalPrice} = useMemo(() => {
       if (!dateRange?.from || !dateRange?.to) {
@@ -38,7 +47,23 @@ interface BookingProps {
     const handleBooking = async () => {
       if (!checkIn || !checkOut) return;
       setLoading(true);
+      setBookingError(null);
+      setBookingSuccess(null);
+
+      let bookingId: string | null = null
+
         try {
+          const { available, conflicts } = await checkDatesAvailable({apartmentId, checkInDate: checkIn, checkOutDate: checkOut});
+          if (!available) {
+            setBookingError(`Dates are not available. There's a booking: ${conflicts[0].check_in_date} to ${conflicts[0].check_out_date}`);
+            setLoading(false);
+            return;
+          }
+  
+          const { booking } = await createPending({apartmentId, checkInDate: checkIn, checkOutDate: checkOut})
+          
+          bookingId = booking.id;
+
           await createEscrowTokenAccount(apartmentId)
           
           const txSignature = await createEscrow({
@@ -48,9 +73,17 @@ interface BookingProps {
             ownerAddress: OWNER_ADDRESS,
             usdcMint: USDC_MINT
           })
+          if(bookingId) {
+            await confirmBooking(bookingId, "confirmed");
+          }
           setBookingSuccess(txSignature);
+
         } catch (error) {
-          console.error("Booking failed:", error);
+          const message = error instanceof Error ? error.message : "Failed to create booking"
+          setBookingError(message);
+          if(bookingId){
+            await rollbackBooking(bookingId)
+          }
         } finally {
           setLoading(false);
         }
@@ -102,7 +135,13 @@ interface BookingProps {
       View transaction
         </a>
      </div>
-)}
+      )}
+      {bookingError && (
+      <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-lg">
+        <p className="font-semibold text-red-800">Booking Failed</p>
+        <p className="text-sm text-red-600">{bookingError}</p>
+      </div>
+      )}
         <div className="mt-4 flex items-center justify-between border-t pt-4">
         <span className="font-semibold">Total</span>
         <span className="text-2xl font-bold">{nights > 0 ? `${totalPrice} USDC` : "-- USDC"}</span>
