@@ -24,7 +24,7 @@ interface BookingProps {
     const {
       checkDatesAvailable,
       createPending,
-      confirmBooking,
+      updateBooking,
       rollbackBooking,
     } = useBookingAPI();
 
@@ -74,7 +74,7 @@ interface BookingProps {
             usdcMint: USDC_MINT
           })
           if(bookingId) {
-            await confirmBooking(bookingId, "confirmed");
+            await updateBooking(bookingId, "confirmed");
           }
           setBookingSuccess(txSignature);
 
