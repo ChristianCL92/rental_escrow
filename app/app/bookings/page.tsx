@@ -7,6 +7,8 @@ import Link from "next/link";
 import useGuestBookings from "@/hooks/useGuestBookings";
 import GuestBookings from "@/components/GuestBookings";
 import { useState } from "react";
+import useBookingAPI from "@/hooks/useBookingAPI";
+
 
 export const GuestPage = () => {
     const {
@@ -26,20 +28,21 @@ export const GuestPage = () => {
 
     const  { connected} = useWallet();
     const [ cancelId, setCancelId ] = useState<number | null>(null);
-    
+    const {  findBookingId, updateBooking  } = useBookingAPI();
 
-    const handleCancelation = (apartmentId: number ) => {
+    const handleCancelation = async(apartmentId: number, checkInDate: Date ) => {
           setCancelId(apartmentId);
-
-    cancelBookingMutation(
-      { apartmentId },
-
-      {
-        onSettled: () => {
-          setCancelId(null);
-        }
-      }
-  )
+          cancelBookingMutation(
+            { apartmentId },
+            
+            {
+              onSettled: () => {
+                setCancelId(null);
+              }
+            }
+          )
+          const {booking} = await findBookingId(apartmentId, checkInDate)
+          await updateBooking( booking.id , "cancelled");
 
 }
 
