@@ -1,5 +1,6 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useCallback, useState } from "react";
+import { json } from "stream/consumers";
 
 interface AvailabilityParams {
     apartmentId: number;
@@ -18,6 +19,32 @@ const useBookingAPI = () => {
     const [isRollback, setIsRollback] = useState(false);
     const [ error, setError ] = useState<string | null>(null);
     const { publicKey } = useWallet();
+
+    const findBookingId = useCallback(async(apartmentId: number, checkInDate: Date) => {
+
+        if (!publicKey) {
+            throw new Error("Wallet not connected");
+        }
+        try {
+            const params = new URLSearchParams({
+                apartmentId: apartmentId.toString(),
+                checkInDate: formatDate(checkInDate),
+                guestWallet: publicKey.toBase58()
+            })
+            const response = await fetch(`/api/bookings/${params}`);
+
+            if (!response.ok) {
+                console.log("Response could not be resolved properly");
+                const message = await response.json();
+                throw new Error(message.error || "Booking not found");
+            }
+               return await response.json();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Internal error message"
+            setError(message);
+            throw error;
+        }
+    }, [publicKey])
 
     const checkDatesAvailable = useCallback(
         async({apartmentId, checkInDate, checkOutDate}: AvailabilityParams) => {
@@ -153,6 +180,7 @@ const useBookingAPI = () => {
     }, [publicKey])
 
     return {
+        findBookingId,
         checkDatesAvailable,
         isChecking,
         error,
