@@ -33,7 +33,9 @@ export default function RootLayout({
         <QueryProvider>
         <SolanaWalletProvider>
         <NavBar/>
+        <div className="pt-20">
         {children}
+        </div>
         </SolanaWalletProvider>
         </QueryProvider>
       </body>
