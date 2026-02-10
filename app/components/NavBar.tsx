@@ -8,7 +8,7 @@ import LogoElSolar from "@/public/elsolar-logo.jpeg"
 const NavBar = () => {
   
     return (
-    <nav className="flex justify-between items-center p-6 bg-gray-900">
+    <nav className="fixed top-0 w-full z-40 flex justify-between items-center p-6 bg-gray-900">
       <div className="flex items-center gap-2 sm:gap-5">
         <Image 
        src={LogoElSolar}
