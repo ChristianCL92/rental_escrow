@@ -84,7 +84,7 @@ interface PropertyPageProps {
           </div>
         </div>
 
-        <div className="lg:sticky lg:top-8 lg:self-start">
+        <div className="lg:sticky lg:top-26 lg:self-start">
             <BookingCard
             apartmentId={property.apartmentId} 
             pricePerNight={property.pricePerNight} />
