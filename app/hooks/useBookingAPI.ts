@@ -20,6 +20,28 @@ const useBookingAPI = () => {
     const [ error, setError ] = useState<string | null>(null);
     const { publicKey } = useWallet();
 
+    const datesBooked = useCallback(async(apartmentId: number) => {
+       
+        try {
+            const params = new URLSearchParams({
+            apartmentId: apartmentId.toString()
+        })
+
+        const respons = await fetch(`/api/bookings/booked-dates?${params}`);
+
+        if (!respons.ok) {
+            const errorData = await respons.json();
+            throw new Error(errorData.error || "dates booked not found");
+        }
+        return await respons.json();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "failed to get booked dates"
+            setError(message);
+            throw error;
+        }
+    
+    }, [])
+
     const findBookingId = useCallback(async(apartmentId: number, checkInDate: Date) => {
 
         if (!publicKey) {
@@ -189,7 +211,8 @@ const useBookingAPI = () => {
         updateBooking,
         isConfirming,
         rollbackBooking,
-        isRollback
+        isRollback,
+        datesBooked
 
     }
 }
