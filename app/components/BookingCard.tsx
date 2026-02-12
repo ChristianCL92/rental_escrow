@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Calendar } from "./ui/calendar";
 import { Button } from "./ui/button";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { DateRange } from "react-day-picker";
-import { differenceInDays, format, startOfDay } from "date-fns";
+import { differenceInDays, eachDayOfInterval, format, startOfDay } from "date-fns";
 import useRentalProgram from "@/hooks/useRentalProgram";
 import useBookingAPI from "@/hooks/useBookingAPI";
 
@@ -14,10 +14,16 @@ interface BookingProps {
   apartmentId: number
 }
 
+interface BookedDateRange {
+    check_in_date: string;
+    check_out_date: string;
+}
+
  const BookingCard = ({pricePerNight, apartmentId}: BookingProps) => {
     const {connected} = useWallet()
     const [loading, setLoading] = useState(false);
     const [bookingError, setBookingError] = useState<string | null>(null);
+    const [desabledDates, setDesabledDates] = useState<Date[]>([]);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(); 
     const [bookingSuccess, setBookingSuccess] = useState<string | null>(null)
     const { createEscrow, OWNER_ADDRESS, USDC_MINT, createEscrowTokenAccount } = useRentalProgram();
@@ -26,24 +32,45 @@ interface BookingProps {
       createPending,
       updateBooking,
       rollbackBooking,
+      datesBooked
     } = useBookingAPI();
-
 
     const {checkIn, checkOut, nights, totalPrice} = useMemo(() => {
       if (!dateRange?.from || !dateRange?.to) {
-          return {checkIn: null, checkOut: null, nights: 0, totalPrice: 0};
+        return {checkIn: null, checkOut: null, nights: 0, totalPrice: 0};
       }
       const nights = differenceInDays(dateRange.to, dateRange.from)
-
+      
       return {
         nights,
         checkIn: dateRange.from,
         checkOut: dateRange.to,
         totalPrice: nights * pricePerNight
       }
-
+      
     }, [dateRange, pricePerNight])
 
+    useEffect(() => {
+      const bookedDates = async () => {
+        try {
+          const {bookings} = await datesBooked(apartmentId);
+          console.log("Booked date ranges:", bookings);
+          const allDates = bookings.flatMap((booking:BookedDateRange) => 
+            eachDayOfInterval({
+              start:new Date(booking.check_in_date),
+              end: new Date(booking.check_out_date)
+            }).slice(0, -1)
+          );
+
+          setDesabledDates(allDates);
+          
+        } catch (error) {
+          console.error("failed to access booked dates", error);
+        }
+      }
+      bookedDates();
+    }, [apartmentId ,datesBooked])
+ 
     const handleBooking = async () => {
       if (!checkIn || !checkOut) return;
       setLoading(true);
@@ -104,7 +131,9 @@ interface BookingProps {
           onSelect={setDateRange}
           numberOfMonths={1}
           className="rounded-lg border"
-          disabled={(date) => date < startOfDay(new Date())}
+          disabled={[(date) => date < startOfDay(new Date()), 
+            ...desabledDates,
+          ]}
           startMonth={new Date()}
         />
       </div>
