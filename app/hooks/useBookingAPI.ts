@@ -97,6 +97,7 @@ const useBookingAPI = () => {
                 console.error("Encountered error when processing data:", error);
                 const message = error instanceof Error ? error.message : "Failed to check availability";
                 setError(message);
+                throw error
             } finally {
                 setIsChecking(false);
         
@@ -139,6 +140,7 @@ const useBookingAPI = () => {
             } catch (error) {
                 const message = error instanceof Error ? error.message : "Failed to create pending booking";
                 setError(message);
+                throw error
             } finally {
                 setIsCreating(false);
             }
@@ -165,6 +167,7 @@ const useBookingAPI = () => {
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to confirm booking"  
           setError(message);
+          throw error
         } finally {
             setIsConfirming(false);
         }
@@ -196,6 +199,7 @@ const useBookingAPI = () => {
               console.error("Rollback failed:", error);
           const message = error instanceof Error ? error.message : "Failed to rollback booking"  
           setError(message);
+          throw error
         } finally {
             setIsRollback(false);
         }
