@@ -125,7 +125,12 @@ if (!connected) {
               <p className="text-sm text-green-600">Completed</p>
           </div>
         </div>
-          )}  
+          )}
+          {isError && (
+            <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-lg">
+              {error instanceof Error ? error.message : "Failed to load bookings"}
+            </div>
+          )} 
       <div className="grid gap-4 md:grid-cols-2 mt-6">
       {bookings.map((booking) => {
         return(
