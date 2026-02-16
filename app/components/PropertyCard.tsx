@@ -19,7 +19,7 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
     <Card className="overflow-hidden transition-shadow hover:shadow-lg">
       <div className="relative h-48 w-full">
         <Image
-          src={property.image}
+          src={property.images[0]}
           alt={property.name}
           fill
           className="object-cover"
