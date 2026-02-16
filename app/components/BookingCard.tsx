@@ -5,7 +5,7 @@ import { Calendar } from "./ui/calendar";
 import { Button } from "./ui/button";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { DateRange } from "react-day-picker";
-import { differenceInDays, eachDayOfInterval, format, startOfDay } from "date-fns";
+import { differenceInDays, eachDayOfInterval, format, set, startOfDay } from "date-fns";
 import useRentalProgram from "@/hooks/useRentalProgram";
 import useBookingAPI from "@/hooks/useBookingAPI";
 
@@ -23,6 +23,7 @@ interface BookedDateRange {
     const {connected} = useWallet()
     const [loading, setLoading] = useState(false);
     const [bookingError, setBookingError] = useState<string | null>(null);
+    const [dateError, setDateError] = useState<string | null>(null);
     const [desabledDates, setDesabledDates] = useState<Date[]>([]);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(); 
     const [bookingSuccess, setBookingSuccess] = useState<string | null>(null)
@@ -54,7 +55,6 @@ interface BookedDateRange {
       const bookedDates = async () => {
         try {
           const {bookings} = await datesBooked(apartmentId);
-          console.log("Booked date ranges:", bookings);
           const allDates = bookings.flatMap((booking:BookedDateRange) => 
             eachDayOfInterval({
               start:new Date(booking.check_in_date),
@@ -66,6 +66,8 @@ interface BookedDateRange {
           
         } catch (error) {
           console.error("failed to access booked dates", error);
+          const message = error instanceof Error ? error.message : "Failed to display disabled dates in calendar";
+          setDateError(message);
         }
       }
       bookedDates();
@@ -169,6 +171,11 @@ interface BookedDateRange {
       <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-lg">
         <p className="font-semibold text-red-800">Booking Failed</p>
         <p className="text-sm text-red-600">{bookingError}</p>
+      </div>
+      )}
+        {dateError && (
+      <div className="mt-4 p-4 bg-yellow-200 border border-yellow-400 rounded-lg">
+        <p className="text-sm text-yellow-600">{dateError}</p>
       </div>
       )}
         <div className="mt-4 flex items-center justify-between border-t pt-4">
