@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getPropertyById } from "@/lib/properties";
 import { Button } from "@/components/ui/button";
 import BookingCard from "@/components/BookingCard";
+import ImageCarousel from "@/components/ImageCarousel";
 
 interface PropertyPageProps {
   params: Promise<{ id: string }>;
@@ -25,16 +26,7 @@ const PropertyPage = async ({ params }: PropertyPageProps) => {
       </Link>
       <div className="grid gap-8 lg:grid-cols-2">
         <div>
-          <div className="relative aspect-video w-full overflow-hidden rounded-xl">
-            <Image
-              src={property.image}
-              alt={property.name}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 1024px) 100vw, 50vw"
-            />
-          </div>
+          <ImageCarousel images={property.images} alt={property.name} />
           <div className="mt-6">
             <div className="flex items-start justify-between">
               <div>
