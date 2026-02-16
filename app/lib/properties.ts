@@ -29,8 +29,7 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
-    image:
-      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
+    images: ["/images/apt001.jpeg"],
     available: true,
   },
   {
@@ -49,8 +48,7 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
-    image:
-      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80",
+    images: ["/images/apt002.jpeg"],
     available: true,
   },
   {
@@ -69,8 +67,7 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
-    image:
-      "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80",
+    images: ["/images/apt003.jpeg"],
     available: true,
   },
   {
@@ -89,8 +86,7 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
-    image:
-      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&q=80",
+    images: ["/images/apt004.jpeg"],
     available: true,
   },
 
@@ -111,8 +107,12 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 4,
-    image:
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80",
+    images: [
+      "/images/apt005.1.jpeg",
+      "/images/apt005.2.jpeg",
+      "/images/apt005.3.jpeg",
+      "/images/apt005.cama.jpeg",
+    ],
     available: true,
   },
 ];
