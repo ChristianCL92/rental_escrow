@@ -10,6 +10,6 @@ export interface Property {
   features: string[];
   sharedAmenities: string[];
   maxGuests: number;
-  image: string;
+  images: string[];
   available: boolean;
 }
