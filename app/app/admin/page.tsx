@@ -1,54 +1,54 @@
-"use client"
-import useRentalProgram, {EscrowInfo} from "@/hooks/useRentalProgram"
-import {  useState } from "react";
+"use client";
+import useRentalProgram, { EscrowInfo } from "@/hooks/useRentalProgram";
+import { useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { format } from "date-fns";
 import { useWallet } from "@solana/wallet-adapter-react";
 import useEscrowQueries from "@/hooks/useEscrowQueries";
 
 const AdminPage = () => {
-    const [releasingId, setReleasingId] = useState<string | null>(null);    
-    const {connected} = useWallet();    
-    const { isOwner } = useRentalProgram();
-    const { 
-            escrows,
-            isLoading,
-            isError,
-            error,
-            refetch,
-            releasePayment,
-            isReleasing,
-            releaseError
-        } = useEscrowQueries();
-   
- const handleRelease = async (escrow: EscrowInfo) => {
-  const escrowKey = escrow.publicKey.toBase58();
-    setReleasingId(escrowKey);
-    
+  const [releasingId, setReleasingId] = useState<string | null>(null);
+  const { connected } = useWallet();
+  const { isOwner } = useRentalProgram();
+  const {
+    escrows,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    releasePayment,
+    isReleasing,
+    releaseError,
+  } = useEscrowQueries();
 
-    releasePayment({
+  const handleRelease = async (escrow: EscrowInfo) => {
+    const escrowKey = escrow.publicKey.toBase58();
+    setReleasingId(escrowKey);
+
+    releasePayment(
+      {
         apartmentId: escrow.apartmentId,
-        guestAddress: escrow.guestAddress
-    },
-    {
+        guestAddress: escrow.guestAddress,
+      },
+      {
         onSuccess: () => {
-            setReleasingId(null)
+          setReleasingId(null);
         },
         onError: (err) => {
-            console.error("Transaction failed to release:", err);
-            setReleasingId(null)
+          console.error("Transaction failed to release:", err);
+          setReleasingId(null);
+        },
+      },
+    );
+  };
 
-        }
-    },
-
-  )
-}
-
-if (!connected) {
+  if (!connected) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-white mb-4">
+            Admin Dashboard
+          </h1>
           <p className="text-gray-400 mb-6">Connect your wallet to continue</p>
           <WalletMultiButton />
         </div>
@@ -60,8 +60,12 @@ if (!connected) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-500 mb-4">Access Denied</h1>
-          <p className="text-gray-400">This wallet is not authorized to access the admin panel.</p>
+          <h1 className="text-2xl font-bold text-red-500 mb-4">
+            Access Denied
+          </h1>
+          <p className="text-gray-400">
+            This wallet is not authorized to access the admin panel.
+          </p>
         </div>
       </div>
     );
@@ -72,11 +76,11 @@ if (!connected) {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-            {releaseError && (
-              <p className="text-red-500">
-                Release failed: {releaseError.message}
-             </p>
-              )}
+          {releaseError && (
+            <p className="text-red-500">
+              Release failed: {releaseError.message}
+            </p>
+          )}
           <div className="flex gap-4 items-center">
             <button
               onClick={() => refetch()}
@@ -112,9 +116,13 @@ if (!connected) {
         </div>
         {/* Escrows Table */}
         {isLoading ? (
-          <div className="text-center text-gray-400 py-12">Loading escrows...</div>
+          <div className="text-center text-gray-400 py-12">
+            Loading escrows...
+          </div>
         ) : escrows.length === 0 ? (
-          <div className="text-center text-gray-400 py-12">No bookings found</div>
+          <div className="text-center text-gray-400 py-12">
+            No bookings found
+          </div>
         ) : (
           <div className="bg-gray-800 rounded-lg overflow-hidden">
             <table className="w-full">
@@ -147,7 +155,9 @@ if (!connected) {
 
                   return (
                     <tr key={escrowKey} className="hover:bg-gray-750">
-                      <td className="px-4 py-4 text-white">#{escrow.apartmentId}</td>
+                      <td className="px-4 py-4 text-white">
+                        #{escrow.apartmentId}
+                      </td>
                       <td className="px-4 py-4 text-gray-300 font-mono text-sm">
                         {escrow.guestAddress.toBase58().slice(0, 4)}...
                         {escrow.guestAddress.toBase58().slice(-4)}
@@ -199,7 +209,7 @@ if (!connected) {
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AdminPage
+export default AdminPage;

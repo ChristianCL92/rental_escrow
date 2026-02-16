@@ -1,10 +1,15 @@
-import {createClient} from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 export const createServerClient = () => {
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if(!serviceRoleKey) {
-        throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set - this function can only be called server-side")
-    }
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY is not set - this function can only be called server-side",
+    );
+  }
 
-    return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", serviceRoleKey)
-}
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    serviceRoleKey,
+  );
+};
