@@ -9,16 +9,7 @@
   "instructions": [
     {
       "name": "cancel_booking",
-      "discriminator": [
-        139,
-        162,
-        116,
-        202,
-        78,
-        140,
-        139,
-        90
-      ],
+      "discriminator": [139, 162, 116, 202, 78, 140, 139, 90],
       "accounts": [
         {
           "name": "escrow_account",
@@ -27,14 +18,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  101,
-                  115,
-                  99,
-                  114,
-                  111,
-                  119
-                ]
+                "value": [101, 115, 99, 114, 111, 119]
               },
               {
                 "kind": "account",
@@ -77,16 +61,7 @@
     },
     {
       "name": "initialize",
-      "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
-      ],
+      "discriminator": [175, 175, 109, 31, 13, 152, 155, 237],
       "accounts": [
         {
           "name": "escrow_account",
@@ -95,14 +70,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  101,
-                  115,
-                  99,
-                  114,
-                  111,
-                  119
-                ]
+                "value": [101, 115, 99, 114, 111, 119]
               },
               {
                 "kind": "account",
@@ -163,16 +131,7 @@
     },
     {
       "name": "release_payment",
-      "discriminator": [
-        24,
-        34,
-        191,
-        86,
-        145,
-        160,
-        183,
-        233
-      ],
+      "discriminator": [24, 34, 191, 86, 145, 160, 183, 233],
       "accounts": [
         {
           "name": "escrow_account",
@@ -181,14 +140,7 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  101,
-                  115,
-                  99,
-                  114,
-                  111,
-                  119
-                ]
+                "value": [101, 115, 99, 114, 111, 119]
               },
               {
                 "kind": "account",
@@ -228,16 +180,7 @@
   "accounts": [
     {
       "name": "EscrowAccount",
-      "discriminator": [
-        36,
-        69,
-        48,
-        18,
-        128,
-        225,
-        125,
-        135
-      ]
+      "discriminator": [36, 69, 48, 18, 128, 225, 125, 135]
     }
   ],
   "errors": [
@@ -299,10 +242,7 @@
           {
             "name": "reserved",
             "type": {
-              "array": [
-                "u8",
-                64
-              ]
+              "array": ["u8", 64]
             }
           }
         ]

@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SolanaWalletProvider from "../provider/SolanaWalletProvider";
 import NavBar from "@/components/NavBar";
-import  QueryProvider  from "@/provider/QueryProvider";
+import QueryProvider from "@/provider/QueryProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,12 +31,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryProvider>
-        <SolanaWalletProvider>
-        <NavBar/>
-        <div className="pt-20">
-        {children}
-        </div>
-        </SolanaWalletProvider>
+          <SolanaWalletProvider>
+            <NavBar />
+            <div className="pt-20">{children}</div>
+          </SolanaWalletProvider>
         </QueryProvider>
       </body>
     </html>

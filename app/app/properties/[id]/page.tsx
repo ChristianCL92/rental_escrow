@@ -6,17 +6,17 @@ import { Button } from "@/components/ui/button";
 import BookingCard from "@/components/BookingCard";
 
 interface PropertyPageProps {
-    params: Promise<{id: string}>;
+  params: Promise<{ id: string }>;
 }
 
- const PropertyPage = async ({params}: PropertyPageProps) => {
- const {id} = await params;
- const property = getPropertyById(id);
- 
- if(!property) {
+const PropertyPage = async ({ params }: PropertyPageProps) => {
+  const { id } = await params;
+  const property = getPropertyById(id);
+
+  if (!property) {
     notFound();
- }
- return (
+  }
+  return (
     <main className="container mx-auto px-4 py-8">
       <Link href="/" className="inline-block mb-6">
         <Button variant="ghost" className="gap-2 cursor-pointer">
@@ -85,13 +85,13 @@ interface PropertyPageProps {
         </div>
 
         <div className="lg:sticky lg:top-26 lg:self-start">
-            <BookingCard
-            apartmentId={property.apartmentId} 
-            pricePerNight={property.pricePerNight} />
+          <BookingCard
+            apartmentId={property.apartmentId}
+            pricePerNight={property.pricePerNight}
+          />
         </div>
       </div>
     </main>
-  
- );
- }
+  );
+};
 export default PropertyPage;

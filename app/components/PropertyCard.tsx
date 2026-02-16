@@ -1,22 +1,22 @@
-"use client"
-import Image from 'next/image';
-import Link from 'next/link';
-import { Card, CardHeader, CardContent, CardFooter } from "./ui/card"
-import { Property } from '@/app/types/property';
-import { Button } from "./ui/button"
+"use client";
+import Image from "next/image";
+import Link from "next/link";
+import { Card, CardHeader, CardContent, CardFooter } from "./ui/card";
+import { Property } from "@/app/types/property";
+import { Button } from "./ui/button";
 
 interface PropertyCardProps {
-    property: Property;
+  property: Property;
 }
 
-const PropertyCard = ({property}: PropertyCardProps) => {
-    const typeLabels: Record<Property["type"], string> = {
-        room: "room",
-        apartment: "apartment",
-        camping: "camping"
-    }
+const PropertyCard = ({ property }: PropertyCardProps) => {
+  const typeLabels: Record<Property["type"], string> = {
+    room: "room",
+    apartment: "apartment",
+    camping: "camping",
+  };
   return (
-   <Card className="overflow-hidden transition-shadow hover:shadow-lg">
+    <Card className="overflow-hidden transition-shadow hover:shadow-lg">
       <div className="relative h-48 w-full">
         <Image
           src={property.image}
@@ -28,7 +28,7 @@ const PropertyCard = ({property}: PropertyCardProps) => {
         <span className="absolute left-3 top-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs font-medium text-white">
           {typeLabels[property.type]}
         </span>
-        
+
         {!property.available && (
           <span className="absolute right-3 top-3 rounded-full bg-red-500 px-3 py-1 text-xs font-medium text-white">
             Unavailable
@@ -56,34 +56,36 @@ const PropertyCard = ({property}: PropertyCardProps) => {
         <p className="mb-3 text-sm text-muted-foreground line-clamp-2">
           {property.description}
         </p>
-        
-        
+
         <div className="flex flex-wrap gap-1">
-           {property.features.slice(0, 3).map((feature) => (
+          {property.features.slice(0, 3).map((feature) => (
             <span
               key={feature}
               className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700"
             >
               {feature}
             </span>
-          ))} 
-           {property.features.length > 3 && (
+          ))}
+          {property.features.length > 3 && (
             <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">
               +{property.features.length - 3} more
             </span>
-          )} 
+          )}
         </div>
       </CardContent>
 
       <CardFooter>
         <Link href={`/properties/${property.id}`} className="w-full">
-          <Button className="w-full cursor-pointer" disabled={!property.available}>
-            {property.available ? 'View & Book' : 'Not Available'}
+          <Button
+            className="w-full cursor-pointer"
+            disabled={!property.available}
+          >
+            {property.available ? "View & Book" : "Not Available"}
           </Button>
         </Link>
       </CardFooter>
     </Card>
   );
-}
+};
 
-export default PropertyCard
+export default PropertyCard;
