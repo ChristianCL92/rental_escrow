@@ -4,6 +4,7 @@ import "./globals.css";
 import SolanaWalletProvider from "../provider/SolanaWalletProvider";
 import NavBar from "@/components/NavBar";
 import QueryProvider from "@/provider/QueryProvider";
+import Footer from "@/components/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,8 @@ export default function RootLayout({
         <QueryProvider>
           <SolanaWalletProvider>
             <NavBar />
-            <div className="pt-20">{children}</div>
+            <div className="pt-20 pb-20">{children}</div>
+            <Footer />
           </SolanaWalletProvider>
         </QueryProvider>
       </body>
