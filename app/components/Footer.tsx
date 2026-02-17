@@ -4,7 +4,7 @@ const Footer = () => {
   return (
     <footer className="bottom-0 w-full bg-gray-900 text-white p-6">
       <div className="flex justify-around items-center">
-        <span>© El Solar Copy right {new Date().getFullYear()}</span>
+        <span>© El Solar Copyright {new Date().getFullYear()}</span>
         <div className="flex gap-4">
           <a
             href="https://instagram.com/elsolarcol"
