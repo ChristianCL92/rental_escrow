@@ -4,6 +4,7 @@ import "./globals.css";
 import SolanaWalletProvider from "../provider/SolanaWalletProvider";
 import NavBar from "@/components/NavBar";
 import QueryProvider from "@/provider/QueryProvider";
+import Footer from "@/components/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,12 +29,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <QueryProvider>
           <SolanaWalletProvider>
             <NavBar />
-            <div className="pt-20">{children}</div>
+            <main className="pt-20 pb-20 flex-1">{children}</main>
+            <Footer />
           </SolanaWalletProvider>
         </QueryProvider>
       </body>
