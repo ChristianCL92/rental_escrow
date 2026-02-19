@@ -121,6 +121,12 @@
   }
 }
 
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 .wallet-adapter-button {
   white-space: nowrap;
 }
