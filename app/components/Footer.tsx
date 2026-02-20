@@ -2,7 +2,7 @@ import { FaInstagram, FaWhatsapp } from "react-icons/fa";
 
 const Footer = () => {
   return (
-    <footer className="bottom-0 w-full bg-gray-900 text-white p-6">
+    <footer className="bottom-0 w-full bg-gray-900 text-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="flex justify-around items-center">
         <span>© El Solar Copyright {new Date().getFullYear()}</span>
         <div className="flex gap-4">
