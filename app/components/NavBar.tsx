@@ -12,15 +12,11 @@ const NavBar = () => {
     <nav className="fixed top-0 w-full z-40 flex justify-between items-center p-6 bg-gray-900">
       <div className="flex items-center gap-2 sm:gap-5">
         <Link href={"/"}>
-          <Image
-            src={LogoElSolar}
-            alt="El Solar Logo"
-            width={45}
-            height={45}
-            className="max-[395px]:hidden"
-          />
+          <Image src={LogoElSolar} alt="El Solar Logo" width={45} height={45} />
         </Link>
-        <h1 className="text-lg font-bold text-white sm:text-2xl">El Solar</h1>
+        <h1 className=" max-[768px]:hidden text-lg font-bold text-white sm:text-2xl ">
+          El Solar
+        </h1>
       </div>
       <div className="flex items-center gap-3 sm:gap-10">
         {pathName !== "/bookings" && (
