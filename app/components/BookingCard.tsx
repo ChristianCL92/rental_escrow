@@ -9,7 +9,6 @@ import {
   differenceInDays,
   eachDayOfInterval,
   format,
-  set,
   startOfDay,
 } from "date-fns";
 import useRentalProgram from "@/hooks/useRentalProgram";
@@ -180,6 +179,12 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
       )}
       {bookingSuccess && (
         <div className="mt-4 p-4 bg-green-100 border border-green-400 rounded-lg">
+          <button
+            className="float-right text-gray-950 hover:text-gray-600 font-bold cursor-pointer"
+            onClick={() => setBookingSuccess(null)}
+          >
+            X
+          </button>
           <p className="font-semibold text-green-800">Booking Confirmed!</p>
           <a
             href={`https://explorer.solana.com/tx/${bookingSuccess}?cluster=devnet`}
