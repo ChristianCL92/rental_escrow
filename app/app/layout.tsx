@@ -22,19 +22,19 @@ export const metadata: Metadata = {
     template: "%s | El Solar",
   },
   description:
-    "Book vacation stays in the Colombian Andes with USDC payments on Solana. Rooms and apartments surrounded by nature, pool, and hiking trails.",
+    "Book vacation stays in the Colombian Andes with USDC payments on Solana. Rooms and apartment surrounded by nature, pool, and hiking trails.",
   metadataBase: new URL("https://el-solar.vercel.app"),
   openGraph: {
     title: "El Solar — Vacation Rentals in the Colombian Andes",
     description:
-      "Book vacation stays with USDC payments on Solana. Nature, pool, and hiking in the Andes.",
+      "Book vacation stays with USDC payments on Solana. Rooms and apartment with nature, pool, and hiking trails in the Colombian Andes.",
     url: "https://el-solar.vercel.app",
     siteName: "El Solar",
     locale: "en_US",
     type: "website",
     images: [
       {
-        url: "/el-solar-preview.jpg",
+        url: "/el-solar-preview-1.jpg",
         alt: "El Solar Vacation Rentals in the Colombian Andes",
       },
     ],
