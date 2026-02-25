@@ -229,7 +229,9 @@ pub struct ReleasePayment <'info> {
         constraint = owner_token_account.mint == usdc_mint.key(),
     )]
     pub owner_token_account: Account<'info, TokenAccount>,
-    
+
+    #[account(constraint=owner.key() == escrow_account.owner_address @ EscrowError::InvalidOwner)]
+    pub owner:Signer<'info>,    
     ///CHECK: Guest address that originally made the booking, receives rent refund
     #[account(
         mut,
