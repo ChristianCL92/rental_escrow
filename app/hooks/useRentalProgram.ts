@@ -243,6 +243,7 @@ const useRentalProgram = () => {
           escrowAccount: getPdaGuest(guestAddress, apartmentId),
           escrowTokenAccount,
           ownerTokenAccount,
+          owner: OWNER_ADDRESS,
           guest: guestAddress,
           usdcMint: USDC_MINT,
           tokenProgram: TOKEN_PROGRAM_ID,
