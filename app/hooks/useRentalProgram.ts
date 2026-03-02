@@ -127,7 +127,12 @@ const useRentalProgram = () => {
         throw new Error("Wallet not connected");
       }
 
-      const rentTime = new BN(Math.floor(checkInDate.getTime() / 1000));
+      const utcDate = Date.UTC(
+        checkInDate.getFullYear(),
+        checkInDate.getMonth(),
+        checkInDate.getDate(),
+      );
+      const rentTime = new BN(Math.floor(utcDate / 1000));
       const amountEscrow = new BN(toUSDCAmount(amount));
       const escrowPDA = getEscrowPDA(apartmentId);
       if (!escrowPDA) {
