@@ -26,7 +26,9 @@ pub mod rental_escrow {
          EscrowError::InvalidAmount);
          
          let clock = Clock::get()?;
-         require!(rent_time > clock.unix_timestamp as u64,
+         let seconds_in_day= 86400;
+         let start_of_day = ((clock.unix_timestamp as u64)/ seconds_in_day) * seconds_in_day;
+         require!(rent_time >= start_of_day,
          EscrowError::InvalidRentTime);
 
         let escrow_account =  &mut ctx.accounts.escrow_account;
