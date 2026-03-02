@@ -7,13 +7,13 @@ on:
     branches: [main]
 
 env:
-  SOLANA_VERSION: "3.0.10"
-  ANCHOR_VERSION: "0.31.1"
+  SOLANA_VERSION: '3.0.10'
+  ANCHOR_VERSION: '0.31.1'
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,8 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          
+          node-version: '20'
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -49,10 +48,11 @@ jobs:
           solana --version
           anchor --version
 
-      - name: Create wallet for testing
+      - name: Setup wallet for testing
         run: |
-          solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
-          solana config set --url localhost
+          mkdir -p ~/.config/solana
+           echo '${{ secrets.SOLANA_KEYPAIR }}' > ~/.config/solana/id.json
+           solana config set --url localhost
 
       - name: Install dependencies
         run: npm install

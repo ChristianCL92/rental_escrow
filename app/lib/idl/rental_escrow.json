@@ -163,6 +163,10 @@
           "writable": true
         },
         {
+          "name": "owner",
+          "signer": true
+        },
+        {
           "name": "guest",
           "writable": true
         },
@@ -203,6 +207,26 @@
       "code": 6003,
       "name": "InvalidGuest",
       "msg": "Invalid guest address"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidOwner",
+      "msg": "Invalid owner address"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidApartmentId",
+      "msg": "Apartment number does not exist"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidRentTime",
+      "msg": "Rent time must be in the future"
     }
   ],
   "types": [

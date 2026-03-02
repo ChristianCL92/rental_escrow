@@ -169,6 +169,10 @@ export type RentalEscrow = {
           writable: true;
         },
         {
+          name: "owner";
+          signer: true;
+        },
+        {
           name: "guest";
           writable: true;
         },
@@ -209,6 +213,26 @@ export type RentalEscrow = {
       code: 6003;
       name: "invalidGuest";
       msg: "Invalid guest address";
+    },
+    {
+      code: 6004;
+      name: "invalidOwner";
+      msg: "Invalid owner address";
+    },
+    {
+      code: 6005;
+      name: "invalidApartmentId";
+      msg: "Apartment number does not exist";
+    },
+    {
+      code: 6006;
+      name: "invalidAmount";
+      msg: "Invalid amount";
+    },
+    {
+      code: 6007;
+      name: "invalidRentTime";
+      msg: "Rent time must be in the future";
     },
   ];
   types: [

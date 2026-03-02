@@ -2,7 +2,10 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint, CloseAccount};
 
 declare_id!("2mGptfx2M9rTGsGExE9T3yLZ6MHSXLcgiQjD1NoVsfVa");
-
+pub const OWNER_PUBKEY:Pubkey = pubkey!("BFkaEmBxMfN3vcrmhzo1y86K4AHXi69eZPVE15bgs9xs");
+pub const MIN_APARTMENT_NUMBER:u64 = 1;
+pub const MAX_APARTMENT_NUMBER:u64 = 5;
+pub const MIN_PAYMENT_AMOUNT:u64 = 30_000_000; 
 #[program]
 pub mod rental_escrow {
     use super::*;
@@ -12,6 +15,22 @@ pub mod rental_escrow {
          amount: u64,
          rent_time: u64
         ) -> Result<()> {
+
+        require!(ctx.accounts.owner.key() == OWNER_PUBKEY,
+         EscrowError::InvalidOwner); 
+
+        require!(apartment_id >= MIN_APARTMENT_NUMBER && apartment_id <= MAX_APARTMENT_NUMBER,
+         EscrowError::InvalidApartmentId);
+
+        require!(amount >= MIN_PAYMENT_AMOUNT,
+         EscrowError::InvalidAmount);
+         
+         let clock = Clock::get()?;
+         let seconds_in_day= 86400;
+         let start_of_day = ((clock.unix_timestamp as u64)/ seconds_in_day) * seconds_in_day;
+         require!(rent_time >= start_of_day,
+         EscrowError::InvalidRentTime);
+
         let escrow_account =  &mut ctx.accounts.escrow_account;
         escrow_account.apartment_id = apartment_id;
         escrow_account.amount = amount;
@@ -213,7 +232,9 @@ pub struct ReleasePayment <'info> {
         constraint = owner_token_account.mint == usdc_mint.key(),
     )]
     pub owner_token_account: Account<'info, TokenAccount>,
-    
+
+    #[account(constraint=owner.key() == escrow_account.owner_address @ EscrowError::InvalidOwner)]
+    pub owner:Signer<'info>,    
     ///CHECK: Guest address that originally made the booking, receives rent refund
     #[account(
         mut,
@@ -291,4 +312,12 @@ pub enum EscrowError {
     CannotCancelAfterCheckIn,
     #[msg("Invalid guest address")]
     InvalidGuest,
+    #[msg("Invalid owner address")]
+    InvalidOwner,
+    #[msg("Apartment number does not exist")]
+    InvalidApartmentId,
+    #[msg("Invalid amount")]
+    InvalidAmount,
+    #[msg("Rent time must be in the future")]
+    InvalidRentTime,
 }
