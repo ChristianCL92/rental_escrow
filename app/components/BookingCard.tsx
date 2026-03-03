@@ -197,6 +197,12 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
       )}
       {bookingError && (
         <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-lg">
+          <button
+            onClick={() => setBookingError(null)}
+            className="float-right text-gray-950 hover:text-gray-600 font-bold cursor-pointer"
+          >
+            X
+          </button>
           <p className="font-semibold text-red-800">Booking Failed</p>
           <p className="text-sm text-red-600">{bookingError}</p>
         </div>
