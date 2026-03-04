@@ -107,7 +107,6 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         checkInDate: checkIn,
         checkOutDate: checkOut,
       });
-
       bookingId = booking.id;
 
       await createEscrowTokenAccount(apartmentId);
@@ -120,7 +119,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         usdcMint: USDC_MINT,
       });
       if (bookingId) {
-        await updateBooking(bookingId, "confirmed");
+        await updateBooking(bookingId, "confirmed", txSignature);
       }
       setBookingSuccess(txSignature);
     } catch (error) {
