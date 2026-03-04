@@ -153,7 +153,11 @@ const useBookingAPI = () => {
   );
 
   const updateBooking = useCallback(
-    async (bookingId: string, status: "confirmed" | "cancelled") => {
+    async (
+      bookingId: string,
+      status: "confirmed" | "cancelled",
+      txSignature?: string,
+    ) => {
       setIsConfirming(true);
       setError(null);
       try {
@@ -162,7 +166,7 @@ const useBookingAPI = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ bookingId, status }),
+          body: JSON.stringify({ bookingId, status, txSignature }),
         });
 
         if (!response.ok) {
