@@ -23,11 +23,24 @@ const useGuestBookings = () => {
 
       const date = Date.now();
 
+      const params = new URLSearchParams({
+        wallet: publicKey.toBase58(),
+      });
+      const findSignature = await fetch(`/api/bookings/guest?${params}`);
+
+      const { bookings: dbBookings } = await findSignature.json();
+
       return accounts
         .filter((account) => account.account.guestAddress.equals(publicKey))
         .map((account) => {
           const data = account.account;
           const checkInDate = new Date(data.rentTime.toNumber() * 1000);
+
+          const match = dbBookings?.find(
+            (b: any) =>
+              b.apartment_id === data.apartmentId.toNumber() &&
+              new Date(b.check_in_date).getTime() === checkInDate.getTime(),
+          );
 
           return {
             publicKey: account.publicKey,
@@ -39,6 +52,7 @@ const useGuestBookings = () => {
             rentStarted: data.rentStarted,
             rentEnded: data.rentEnded,
             canRelease: checkInDate.getTime() < date,
+            txSignature: match?.tx_signature ?? null,
           };
         })
         .sort((a, b) => b.checkInDate.getTime() - a.checkInDate.getTime());
