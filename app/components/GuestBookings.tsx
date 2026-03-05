@@ -9,6 +9,7 @@ import {
   Clock,
   Calendar,
   Delete,
+  Receipt,
 } from "lucide-react";
 import { EscrowInfo } from "@/hooks/useRentalProgram";
 
@@ -85,6 +86,16 @@ const GuestBookingCard = ({
           <span>
             {nights} night{nights > 1 ? "s" : ""}
           </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Receipt className="h-4 w-4" />
+          <a
+            href={`https://explorer.solana.com/tx/${booking?.txSignature}?cluster=devnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View Transaction
+          </a>
         </div>
         {canCancel && (
           <div className="flex items-center gap-2">

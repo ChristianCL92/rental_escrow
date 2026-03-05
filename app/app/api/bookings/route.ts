@@ -99,11 +99,12 @@ export const POST = async (request: NextRequest) => {
 
 export const PATCH = async (request: NextRequest) => {
   try {
-    const { bookingId, status } = await request.json();
-    if (!bookingId || !status) {
+    const { bookingId, status, txSignature } = await request.json();
+    console.log("txsignture server side:", txSignature);
+    if (!bookingId || !status || !txSignature) {
       return NextResponse.json(
         {
-          error: "Missing bookingId or status",
+          error: "Missing bookingId, status, or txSignature",
         },
         {
           status: 400,
@@ -123,7 +124,11 @@ export const PATCH = async (request: NextRequest) => {
 
     const { data, error } = await supabase
       .from("bookings")
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({
+        status,
+        tx_signature: txSignature,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", bookingId)
       .select()
       .single();

@@ -55,6 +55,7 @@ export interface EscrowInfo {
   rentStarted: boolean;
   rentEnded: boolean;
   canRelease: boolean;
+  txSignature?: string;
 }
 
 const useRentalProgram = () => {
