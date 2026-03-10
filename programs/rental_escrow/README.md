@@ -1,271 +1,288 @@
-# On-Chain Program: Rental Escrow
+# El Solar - Vacation Rentals on Solana
 
-The Anchor/Rust program that manages escrow accounts and USDC transfers for the Rental Escrow system.
+A fullstack vacation rental dApp for a family property in the Colombian Andes. Guests book stays and pay with USDC through a trustless escrow system on Solana without middleman.
 
 **See [../../README.md](../../README.md) for full project context.**
 
 ## Overview
 
-The `rental_escrow` Anchor program implements two core instructions:
+El Solar combines a **Next.js frontend**, an **Anchor/Rust smart contract** on Solana, and a **Supabase (PostgreSQL) backend** into a three-tier architecture where each layer has a distinct responsibility:
 
-1. **`initialize`** — Create an escrow account and transfer USDC from guest to escrow
-2. **`release_payment`** — Transfer USDC from escrow to owner (after check-in date)
-
-All accounts use **Program Derived Addresses (PDAs)** with seeds `[b"escrow", guest_pubkey, apartment_id_le_u64]` for deterministic account derivation.
+- **Blockchain (Solana):** Holds funds in escrow, enforces payment rules, handles releases and refunds via PDAs
+- **Database (Supabase):** Prevents double bookings (exclusion constraints), tracks booking status, stores transaction signatures linking on-chain and off-chain data
+- **Frontend (Next.js):** Orchestrates both. Wallet signing happens client-side, database operations run through server-side API routes
 
 ## Architecture
 
-### Account Layout (`EscrowAccount`)
-```rust
-pub struct EscrowAccount {
-    pub apartment_id: u64,           // Identifies the rental property
-    pub amount: u64,                 // USDC amount (with 6 decimals)
-    pub owner_address: Pubkey,       // Property owner's wallet
-    pub guest_address: Pubkey,       // Guest's wallet (for PDA derivation)
-    pub rent_time: u64,              // Unix timestamp of check-in date
-    pub rent_started: bool,          // Payment released?
-    pub rent_ended: bool,            // Final state after release
-    pub reserved: [u8; 64],          // Space for future fields
-}
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend (Next.js 16)                     │
+│  React 19 · TypeScript · Tailwind CSS · shadcn/ui           │
+│  Wallet Adapter · Anchor Client · TanStack Query v5         │
+├──────────────────────┬──────────────────────────────────────┤
+│   Client-side        │   Server-side (API Routes)           │
+│   Wallet signing     │   Supabase queries                   │
+│   Blockchain reads   │   Booking CRUD                       │
+│   PDA derivation     │   Availability checks                │
+└──────────┬───────────┴───────────────┬──────────────────────┘
+           │                           │
+           ▼                           ▼
+┌─────────────────────┐   ┌──────────────────────────────┐
+│  Solana (devnet)    │   │  Supabase (PostgreSQL)       │
+│                     │   │                              │
+│  rental_escrow      │   │  bookings table              │
+│  ├─ initialize      │   │  ├─ exclusion constraints    │
+│  ├─ release_payment │   │  ├─ status tracking          │
+│  └─ cancel_booking  │   │  └─ tx_signature linking     │
+│                     │   │                              │
+│  PDA escrow accounts│   │  Double-booking prevention   │
+│  USDC token custody │   │  Off-chain booking records   │
+└─────────────────────┘   └──────────────────────────────┘
 ```
 
-### Data Flow
+## Features
+
+- **Escrow-based payments** — Guest USDC is locked in a PDA-controlled escrow account until the check-in date, then released to the owner. No trust required.
+- **Cancellation with refunds** — Guests can cancel before check-in. USDC is refunded via CPI, the escrow account is closed, and the PDA is freed for rebooking.
+- **Double-booking prevention** — PostgreSQL exclusion constraints at the database level ensure no overlapping reservations per apartment, independent of the blockchain.
+- **On-chain ↔ off-chain linking** — Transaction signatures are stored in Supabase, connecting every booking record to its Solana Explorer proof.
+- **Property listings** — 4 rooms + 1 apartment with image carousels, feature lists, shared amenities, and per-night USDC pricing.
+- **Guest bookings page** — Wallet-connected guests see their booking history with status categories (upcoming, active, completed) and direct links to Solana Explorer.
+- **Admin dashboard** — Owner-only view of all active escrows with one-click payment release after check-in date.
+- **SEO & Open Graph** — Metadata, OG images, and social preview tags for link sharing.
+- **CI/CD** — GitHub Actions pipeline runs Anchor tests on every push/PR to `main`.
+
+## Project Structure
 
 ```
-Guest creates escrow:
-  1. Derive PDA: [b"escrow", guest_pubkey, apartment_id]
-  2. Call initialize(amount, rent_time)
-  3. Transfer USDC: guest_token_account → escrow_token_account
-
-Owner releases payment:
-  1. Call release_payment()
-  2. Check: rent_time <= now && !rent_ended
-  3. CPI transfer: escrow_token_account → owner_token_account (escrow signs)
+rental_escrow/
+├── README.md                              # This file
+├── Anchor.toml                            # Anchor workspace config
+├── .github/
+│   └── workflows/
+│       └── test.yml                       # CI: Anchor tests on push/PR
+│
+├── app/                                   # Next.js frontend
+│   ├── app/
+│   │   ├── layout.tsx                     # Root layout, providers, metadata
+│   │   ├── page.tsx                       # Property listing page
+│   │   ├── properties/[id]/page.tsx       # Individual property + booking
+│   │   ├── bookings/page.tsx              # Guest bookings history
+│   │   ├── admin/page.tsx                 # Owner dashboard
+│   │   └── api/bookings/
+│   │       ├── route.ts                   # GET, POST, PATCH, DELETE bookings
+│   │       ├── availability/route.ts      # POST: check date conflicts
+│   │       ├── booked-dates/route.ts      # GET: disabled calendar dates
+│   │       └── guest/route.ts             # GET: bookings by wallet
+│   ├── components/
+│   │   ├── BookingCard.tsx                # Date picker + escrow creation
+│   │   ├── GuestBookings.tsx              # Booking card with cancel/view tx
+│   │   ├── PropertyCard.tsx               # Property listing card
+│   │   ├── ImageCarousel.tsx              # Multi-image viewer
+│   │   ├── NavBar.tsx                     # Navigation + wallet button
+│   │   ├── Footer.tsx                     # Social links
+│   │   └── ui/                            # shadcn/ui primitives
+│   ├── hooks/
+│   │   ├── useRentalProgram.ts            # Anchor program, PDA derivation, RPCs
+│   │   ├── useEscrowQueries.ts            # Admin: escrow reads + release mutation
+│   │   ├── useGuestBookings.ts            # Guest: merged on-chain + DB data
+│   │   └── useBookingAPI.ts               # Supabase API route calls
+│   ├── provider/
+│   │   ├── SolanaWalletProvider.tsx        # Wallet adapter config
+│   │   └── QueryProvider.tsx              # TanStack Query setup
+│   ├── lib/
+│   │   ├── idl/rental_escrow.json         # Anchor IDL (auto-generated)
+│   │   ├── types/rental_escrow.ts         # TypeScript program bindings
+│   │   ├── properties.ts                  # Property data (5 listings)
+│   │   ├── supabase/initSupabase.ts       # Server-side Supabase client
+│   │   └── utils.ts                       # Helpers
+│   └── README.md                          # Frontend-specific docs
+│
+├── programs/rental_escrow/                # Anchor program (Rust)
+│   ├── src/lib.rs                         # All instructions + state + errors
+│   └── README.md                          # On-chain-specific docs
+│
+└── tests/
+    └── rental_escrow.ts                   # Anchor/Mocha integration tests
 ```
 
 ## Prerequisites
 
-- **Rust** (install via [rustup](https://rustup.rs/))
-- **Anchor CLI** 0.31+ (install via `cargo install --git https://github.com/coral-xyz/anchor avm --locked && avm install latest && avm use latest`)
-- **Solana CLI** (install via [docs.solana.com](https://docs.solana.com/cli/installation))
-- **Node.js** 18+ (for tests)
+- **Node.js** 20+ and **bun** (or npm)
+- **Rust** (`rustup update`)
+- **Solana CLI** 3.0+ (`solana --version`)
+- **Anchor CLI** 0.31+ (`anchor --version`)
+- A **Solana wallet** browser extension (Phantom, Solflare, etc.)
 
-## Building
+## Quick Start
 
-### Compile the program
+### 1. Clone and install
+
+```bash
+git clone https://github.com/ChristianCL92/rental_escrow.git
+cd rental_escrow
+npm install && cd app && bun install && cd ..
+```
+
+### 2. Configure Solana
+
+```bash
+solana config set --url devnet
+```
+
+### 3. Build and deploy the program
+
 ```bash
 anchor build
-```
-
-Output: `target/deploy/rental_escrow.so` (the compiled program binary)
-
-### Check for errors
-```bash
-anchor build --verifiable
-```
-
-## Testing
-
-### Run Anchor tests (recommended)
-```bash
-anchor test
-```
-This:
-1. Starts a local Solana validator
-2. Deploys the program
-3. Runs `tests/rental_escrow.ts` with Mocha
-
-### Run specific test
-```bash
-anchor test -- --grep "initialize"
-```
-
-## Deploying
-
-### Prerequisites
-1. Ensure Solana cluster is set: `solana config set --url devnet`
-2. Ensure wallet has SOL for deploy fees: `solana airdrop 2`
-
-### Deploy to devnet
-```bash
-anchor deploy --provider.cluster devnet
-```
-
-### Deploy to mainnet-beta
-```bash
-solana config set --url mainnet-beta
 anchor deploy
 ```
 
-After deployment, update:
-- `Anchor.toml` cluster setting
-- `app/lib/idl/rental_escrow.json` — `"address"` field
-- `.env.local` — `NEXT_PUBLIC_OWNER_ADDRESS`, `NEXT_PUBLIC_USDC_MINT_ADDRESS`
+Update the program ID in `Anchor.toml` and `app/lib/idl/rental_escrow.json` → `"address"` field if it changes.
 
-## Program Instructions
+### 4. Set environment variables
 
-### `initialize(apartment_id: u64, amount: u64, rent_time: u64)`
+Create `app/.env.local`:
 
-**Purpose:** Create an escrow account and transfer USDC from guest to escrow.
+```env
+# Client-side (exposed to browser)
+NEXT_PUBLIC_OWNER_ADDRESS=<owner_solana_pubkey>
+NEXT_PUBLIC_USDC_MINT_ADDRESS=<devnet_usdc_mint>
+NEXT_PUBLIC_SUPABASE_URL=<supabase_project_url>
 
-**Accounts:**
-- `escrow_account` (init, PDA) — The escrow account
-- `escrow_token_account` (mut) — Associated token account for escrow (owns USDC)
-- `guest_token_account` (mut) — Guest's USDC token account (source of funds)
-- `guest` (signer) — Guest's wallet (pays for account creation & signs transaction)
-- `owner` (unchecked) — Property owner's wallet (stored for later release)
-- `usdc_mint` — USDC token mint
-- `token_program` — Solana Token Program
-- `system_program` — Solana System Program
+# Server-side only (never exposed to browser)
+SUPABASE_SERVICE_ROLE_KEY=<supabase_service_role_key>
+```
 
-**Logic:**
-1. Initialize `EscrowAccount` with apartment_id, amount, owner, guest, rent_time
-2. CPI transfer USDC from guest → escrow_token_account
+> For production (Vercel), set these in the dashboard under Settings → Environment Variables. `.env` files are local-only.
 
-### `release_payment()`
-
-**Purpose:** Release USDC from escrow to owner (after check-in date).
-
-**Accounts:**
-- `escrow_account` (mut, PDA) — The escrow account (must match guest seed)
-- `escrow_token_account` (mut) — Source of USDC
-- `owner_token_account` (mut) — Owner's USDC token account (destination)
-- `guest` (unchecked) — Guest address (used in PDA derivation)
-- `usdc_mint` — USDC token mint
-- `token_program` — Solana Token Program
-
-**Logic:**
-1. Require: `!escrow_account.rent_ended` (prevent double-release)
-2. Require: `current_time >= escrow_account.rent_time` (check-in date passed)
-3. Mark `rent_started = true`, `rent_ended = true`
-4. CPI transfer USDC from escrow → owner (escrow PDA signs via signer seeds)
-
-**Errors:**
-- `PaymentAlreadyReleased` — Attempted to release twice
-- `CheckInDateNotReached` — Check-in time hasn't arrived yet
-
-## IDL Generation
-
-The IDL (Interface Definition Language) is automatically generated when building:
+### 5. Run the frontend
 
 ```bash
-anchor build
+cd app
+bun dev
 ```
 
-Output: `target/idl/rental_escrow.json`
+Open [http://localhost:3000](http://localhost:3000) and connect your wallet.
 
-Copy to frontend:
+### 6. Test the booking flow
+
+1. Connect a Solana wallet with devnet USDC
+2. Browse properties and select dates
+3. Create an escrow (locks USDC on-chain + creates pending booking in DB)
+4. After check-in date, the owner releases payment from the admin dashboard
+5. Verify the transaction on [Solana Explorer](https://explorer.solana.com/?cluster=devnet)
+
+## Developer Workflows
+
+### Frontend
+
 ```bash
-cp target/idl/rental_escrow.json ../app/lib/idl/
+cd app
+bun dev          # Dev server with hot reload
+bun run build    # Production build
+bun run lint     # ESLint
 ```
 
-This IDL is used by the frontend to:
-- Type-check Anchor RPC calls
-- Auto-generate TypeScript bindings (in `app/lib/types/rental_escrow.ts`)
+### On-Chain
 
-## Key Implementation Details
-
-### PDA Derivation
-```rust
-let [escrow_pda, bump] = Pubkey::find_program_address(
-    &[b"escrow", guest.key().as_ref(), apartment_id.to_le_bytes().as_ref()],
-    program_id
-);
+```bash
+anchor build     # Compile Rust program
+anchor test      # Build + deploy to localnet + run tests
+anchor deploy    # Deploy to configured cluster
 ```
 
-**Why PDA?** Ensures one unique escrow per guest–apartment pair. Escrow PDA can authorize token transfers via signer seeds without storing a private key.
+After program changes, copy the updated IDL and TypeScript types:
 
-### Idempotent Token Account Creation
-The frontend uses `createAssociatedTokenAccountIdempotentInstruction` to ensure the token account is created only if it doesn't exist. The program doesn't handle this; the frontend does before calling `initialize`.
-
-### CPI for Token Transfer
-```rust
-let transfer_ctx = CpiContext::new_with_signer(
-    token_program.to_account_info(),
-    Transfer { from: escrow_token, to: owner_token, authority: escrow },
-    &[&[b"escrow", guest.key().as_ref(), apartment_id.to_le_bytes().as_ref(), &[bump]]],
-);
-token::transfer(transfer_ctx, amount)?;
+```bash
+cp target/idl/rental_escrow.json app/lib/idl/
+cp target/types/rental_escrow.ts app/lib/types/
 ```
 
-The `escrow` PDA signs via signer seeds, allowing it to authorize the transfer without a private key.
+## Key Concepts
 
-## Testing Patterns
+### Program Derived Addresses (PDAs)
 
-See `tests/rental_escrow.ts` for full test suite. Common patterns:
+Escrow accounts use seeds `[b"escrow", guest_pubkey, apartment_id_le_u64]`, ensuring one unique escrow per guest–apartment pair. The PDA acts as authority over the escrow's token account, enabling CPI transfers without a private key.
 
-### Creating an escrow
-```typescript
-await program.methods
-  .initialize(new BN(apartmentId), new BN(amount), new BN(rentTime))
-  .accounts({
-    escrowAccount: escrowPDA,
-    escrowTokenAccount: escrowATA,
-    guestTokenAccount: guestATA,
-    guest: guest.publicKey,
-    owner: owner.publicKey,
-    usdcMint,
-    tokenProgram: TOKEN_PROGRAM_ID,
-    systemProgram: SystemProgram.programId,
-  })
-  .signers([guest])
-  .rpc();
-```
+### Three-Tier Orchestration
 
-### Releasing a payment
-```typescript
-await program.methods
-  .releasePayment()
-  .accounts({
-    escrowAccount: escrowPDA,
-    escrowTokenAccount: escrowATA,
-    ownerTokenAccount: ownerATA,
-    guest: guest.publicKey,
-    usdcMint,
-    tokenProgram: TOKEN_PROGRAM_ID,
-  })
-  .rpc();
-```
+Blockchain operations (wallet signing, escrow creation) must happen **client-side**. Database operations (booking records, availability checks) run through **server-side API routes** to protect Supabase credentials. The frontend orchestrates both in sequence — for example, a booking first creates a pending DB record, then submits the on-chain transaction, then updates the DB with the transaction signature.
 
-## File Structure
+### Token Flow
+
+1. **Book:** Guest USDC → escrow token account (PDA authority)
+2. **Release:** Escrow token account → owner token account (CPI with PDA signer seeds)
+3. **Cancel:** Escrow token account → guest token account (refund CPI + account closure)
+
+### React Query Caching
+
+TanStack Query v5 manages all async state with stable `queryKey`s (`['escrows']`, `['guest-booking', wallet]`) and automatic cache invalidation on mutation success.
+
+## CI/CD
+
+GitHub Actions runs the full Anchor test suite on every push to `main` and on pull requests. The workflow installs Solana CLI, Anchor CLI, and uses a stored keypair secret (`SOLANA_KEYPAIR`) that matches the hardcoded owner pubkey in the program.
 
 ```
-programs/rental_escrow/
-├── Cargo.toml                 # Dependencies (anchor, spl-token, etc.)
-├── Xargo.toml                 # (optional) BPF-specific build config
-└── src/
-    └── lib.rs                 # Program logic, accounts, instructions
+Push/PR to main → Install toolchain → Setup wallet → anchor test
 ```
 
-## Common Issues
+## Environment Variables
+
+| Variable                        | Scope  | Purpose                                    |
+| ------------------------------- | ------ | ------------------------------------------ |
+| `NEXT_PUBLIC_OWNER_ADDRESS`     | Client | Owner wallet for UI gating + program calls |
+| `NEXT_PUBLIC_USDC_MINT_ADDRESS` | Client | USDC token mint on target cluster          |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Client | Supabase project URL                       |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Server | Supabase admin key (API routes only)       |
+| `SOLANA_KEYPAIR`                | CI     | GitHub Actions secret for test wallet      |
+
+## On-Chain Program
+
+**Program ID:** `2mGptfx2M9rTGsGExE9T3yLZ6MHSXLcgiQjD1NoVsfVa`
+
+Three instructions with hardcoded security constraints (owner pubkey, apartment ID range 1–5, minimum payment, future rent time):
+
+| Instruction       | Signer | What it does                                                          |
+| ----------------- | ------ | --------------------------------------------------------------------- |
+| `initialize`      | Guest  | Creates escrow PDA, transfers USDC from guest to escrow token account |
+| `release_payment` | Owner  | After check-in date, CPI transfers USDC from escrow to owner          |
+| `cancel_booking`  | Guest  | Before check-in, refunds USDC to guest and closes the escrow account  |
+
+See [programs/rental_escrow/README.md](./programs/rental_escrow/README.md) for account layout, CPI patterns, and testing.
+
+## Demo
+
+> Connect any Solana wallet to test the booking flow on devnet.
+
+> Want to test the full flow? Reach out and I'll send you devnet USDC — [LinkedIn](https://www.linkedin.com/in/chrlono/)
+
+## Documentation
+
+- **[Frontend docs](./app/README.md)** — Next.js setup, component architecture, hooks
+- **[On-chain docs](./programs/rental_escrow/README.md)** — Anchor program internals, account layout, testing patterns
+
+## Troubleshooting
+
+**"Program not initialized" error**
+
+- Verify the program is deployed and the IDL address in `app/lib/idl/rental_escrow.json` matches the deployed program ID.
+
+**"Wallet not connected" during token operations**
+
+- Ensure the browser wallet extension is unlocked and set to the correct Solana cluster (devnet).
 
 **"Account is not executable"**
-- Program ID in frontend IDL doesn't match deployed program. Update `app/lib/idl/rental_escrow.json` → `"address"` field.
 
-**"Constraint failed" on instruction call**
-- Account doesn't satisfy `#[account(...)]` constraints. Check seed derivation, token mint, account authority.
+- The program ID in the IDL doesn't match the deployed program. Re-run `anchor deploy` and update the address.
 
-**"Insufficient funds for rent"**
-- Transaction fee + rent cost exceeds wallet balance. Airdrop more SOL: `solana airdrop 2`
+**Dates not disabled in calendar**
 
-## Useful Commands
+- Check that the Supabase environment variables are set and the `bookings` table has the correct exclusion constraint.
 
-| Command | Purpose |
-|---------|---------|
-| `anchor build` | Compile program |
-| `anchor test` | Run tests in sandbox |
-| `anchor deploy` | Deploy to configured cluster |
-| `anchor keys list` | Show program IDs |
-| `solana program show <PROGRAM_ID>` | Inspect deployed program |
-| `solana config get` | Show current cluster & wallet |
+**Mobile wallet issues**
 
-## Learn More
+- Wallet-connected dApps must be accessed through the wallet's built-in browser (e.g., Phantom browser), not an external mobile browser.
 
-- [Anchor Book](https://www.anchor-lang.com/docs/intro)
-- [Solana Program Library (SPL) Token](https://github.com/solana-labs/solana-program-library/tree/master/token/program)
-- [PDAs & Signer Seeds](https://www.anchor-lang.com/docs/accounts#seed)
-- [Solana Docs](https://docs.solana.com/)
+## License
 
-## Related
-
-- Frontend: [../../app/README.md](../../app/README.md)
+MIT
