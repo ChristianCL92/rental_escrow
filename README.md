@@ -101,7 +101,8 @@ rental_escrow/
 ├── programs/rental_escrow/                # Anchor program (Rust)
 │   ├── src/lib.rs                         # All instructions + state + errors
 │   └── README.md                          # On-chain-specific docs
-│
+├── supabase/
+│   └── schema.sql                         # Database schema (run in Supabase SQL Editor)
 └── tests/
     └── rental_escrow.ts                   # Anchor/Mocha integration tests
 ```
