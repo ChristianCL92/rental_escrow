@@ -100,11 +100,10 @@ export const POST = async (request: NextRequest) => {
 export const PATCH = async (request: NextRequest) => {
   try {
     const { bookingId, status, txSignature } = await request.json();
-    console.log("txsignture server side:", txSignature);
-    if (!bookingId || !status || !txSignature) {
+    if (!bookingId || !status) {
       return NextResponse.json(
         {
-          error: "Missing bookingId, status, or txSignature",
+          error: "Missing bookingId or status",
         },
         {
           status: 400,
@@ -120,15 +119,26 @@ export const PATCH = async (request: NextRequest) => {
       );
     }
 
+    if (status === "confirmed" && !txSignature) {
+      return NextResponse.json(
+        { error: "Missing txSignature for confirmation" },
+        { status: 400 },
+      );
+    }
+
     const supabase = createServerClient();
+
+    const updateData: Record<string, string> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    if (txSignature) {
+      updateData.tx_signature = txSignature;
+    }
 
     const { data, error } = await supabase
       .from("bookings")
-      .update({
-        status,
-        tx_signature: txSignature,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", bookingId)
       .select()
       .single();
