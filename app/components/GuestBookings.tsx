@@ -22,6 +22,7 @@ interface GuestBookingProps extends BookingProps {
   isCanceling: boolean;
   cancelingId: number | null;
   cancelError: Error | null;
+  cancelReset: () => void;
 }
 
 const StatusBadge = ({ booking }: BookingProps) => {
