@@ -23,6 +23,7 @@ export const GuestPage = () => {
     cancelBookingMutation,
     cancelError,
     isCanceling,
+    cancelReset,
   } = useGuestBookings();
 
   const { connected } = useWallet();
@@ -145,6 +146,7 @@ export const GuestPage = () => {
               onCancel={handleCancelation}
               cancelingId={cancelId}
               cancelError={cancelError}
+              cancelReset={cancelReset}
             />
           );
         })}
