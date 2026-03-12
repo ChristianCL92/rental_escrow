@@ -59,6 +59,7 @@ const GuestBookingCard = ({
   isCanceling,
   cancelingId,
   cancelError,
+  cancelReset,
 }: GuestBookingProps) => {
   const pricePerNight = getPriceByApartmentId(booking.apartmentId);
   const nights = booking.amount / pricePerNight;
@@ -112,9 +113,14 @@ const GuestBookingCard = ({
         )}
 
         {cancelError && (
-          <p className="text-red-500 text-sm mt-2">
-            Failed to cancel: {cancelError.message}
-          </p>
+          <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-lg">
+            <button className="float-right" onClick={cancelReset}>
+              X
+            </button>
+            <p className="text-red-600 text-sm mt-2">
+              Failed to cancel: {cancelError.message}
+            </p>
+          </div>
         )}
       </div>
       <div className="mt-3 pt-3 border-t flex justify-between items-center">
