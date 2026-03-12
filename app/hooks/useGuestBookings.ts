@@ -99,6 +99,7 @@ const useGuestBookings = () => {
     cancelBookingMutation: mutation.mutate,
     cancelError: mutation.error,
     isCanceling: mutation.isPending,
+    cancelReset: mutation.reset,
   };
 };
 
