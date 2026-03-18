@@ -148,7 +148,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
           mode="range"
           selected={dateRange}
           onSelect={setDateRange}
-          numberOfMonths={1}
+          numberOfMonths={2}
           className="rounded-lg border"
           disabled={[(date) => date < startOfDay(new Date()), ...desabledDates]}
           startMonth={new Date()}
