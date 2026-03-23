@@ -8,6 +8,7 @@ import useGuestBookings from "@/hooks/useGuestBookings";
 import GuestBookings from "@/components/GuestBookings";
 import { useState } from "react";
 import useBookingAPI from "@/hooks/useBookingAPI";
+import { IoMdArrowBack } from "react-icons/io";
 
 export const GuestPage = () => {
   const {
@@ -48,6 +49,18 @@ export const GuestPage = () => {
   if (!connected) {
     return (
       <main className="container mx-auto px-4 py-16">
+        <div>
+          <Link href={"/"}>
+            <Button
+              className="cursor-pointer"
+              variant="outline"
+              size="sm"
+              aria-label="Back to properties"
+            >
+              <IoMdArrowBack />
+            </Button>
+          </Link>
+        </div>
         <div className="mx-auto max-w-md text-center">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
             <Wallet className="h-8 w-8 text-slate-600" />
