@@ -5,7 +5,7 @@ export const config = {
   matcher: "/api/:path*",
 };
 
-export const middleware = async (req: NextRequest) => {
+export async function proxy(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "anonymous";
   const { success, limit, remaining, reset } = await ratelimit.limit(ip);
 
@@ -29,4 +29,4 @@ export const middleware = async (req: NextRequest) => {
   response.headers.set("X-RateLimit-Reset", reset.toString());
 
   return response;
-};
+}
