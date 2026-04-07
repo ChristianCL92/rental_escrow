@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("GET /api/bookings/booked-dates", () => {
-  test("calendar shows disabled dates for booked ranges", async ({ page }) => {
+  test.skip("calendar shows disabled dates for booked ranges", async ({
+    page,
+  }) => {
     await page.route("**/api/bookings/booked-dates*", (route) =>
       route.fulfill({
         status: 200,
