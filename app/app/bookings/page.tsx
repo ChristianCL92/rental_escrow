@@ -1,5 +1,6 @@
 "use client";
-import { Loader2, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
+import LoadingBookingSkeleton from "./loading";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
@@ -79,12 +80,9 @@ export const GuestPage = () => {
 
   if (isLoading) {
     return (
-      <main className="container mx-auto px-4 py-16">
-        <div className="mx-auto max-w-md text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-slate-600" />
-          <p className="mt-4 text-muted-foreground">Loading your bookings...</p>
-        </div>
-      </main>
+      <div>
+        <LoadingBookingSkeleton />
+      </div>
     );
   }
 
