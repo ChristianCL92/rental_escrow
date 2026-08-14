@@ -14,13 +14,31 @@ const countTrailingHashtags = (text: string): number => {
 };
 
 /**
- * Language is not structurally checkable, so this is a heuristic. The tokens
- * are ones that are common in Spanish and rare in English, which is enough to
- * catch the failure mode that actually happens: the model replying in English.
- * A false reject costs one retry, which the route already budgets for.
+ * Inverted opening punctuation is effectively absent from English, so either
+ * mark on its own is enough to settle the question.
  */
-const SPANISH_MARKERS =
-  /\b(el|la|los|las|un|una|del|que|con|por|para|tus|sus|es|y)\b|[¿¡ñáéíóúü]/i;
+const SPANISH_PUNCTUATION = /[¿¡]/;
+
+/**
+ * Function words that are common in Spanish and rare in English, plus the
+ * accented characters. Deliberately excludes 1-2 character words like "el",
+ * "la", "un" and "es": the property brand is "El Solar", so `\bel\b` matches
+ * inside English copy naming the place ("book El-Solar today") and would wave
+ * an English message through.
+ */
+const SPANISH_TOKENS =
+  /\b(que|con|por|para|los|las|una|unos|unas|del|tus|sus|como|muy|esta|este|esto|desde|hasta|donde|cuando|tenemos|quieres|puedes|nuestro|nuestra|nuestros|nuestras)\b|[ñáéíóúü]/giu;
+
+/**
+ * Language is not structurally checkable, so this is a heuristic aimed at the
+ * failure that actually happens: the model replying in English. Two independent
+ * signals are required so that a single Spanish-looking proper noun in English
+ * copy cannot carry it. A false reject costs one retry, which the route budgets
+ * for.
+ */
+const looksSpanish = (text: string): boolean =>
+  SPANISH_PUNCTUATION.test(text) ||
+  (text.match(SPANISH_TOKENS) ?? []).length >= 2;
 
 export const marketingCopySchema = z
   .object({
@@ -37,10 +55,7 @@ export const marketingCopySchema = z
       .string()
       .min(20, "must be at least 20 characters")
       .max(400, "must be at most 400 characters")
-      .refine(
-        (value) => SPANISH_MARKERS.test(value),
-        "must be written in Spanish",
-      )
+      .refine(looksSpanish, "must be written in Spanish")
       .refine(
         (value) => /\?\s*$/.test(value),
         "must end with a question mark, with nothing after it",
