@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ratelimit } from "./lib/ratelimit";
+import { marketingRatelimit, ratelimit } from "./lib/ratelimit";
 
 export const config = {
   matcher: "/api/:path*",
@@ -7,7 +7,25 @@ export const config = {
 
 export async function proxy(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "anonymous";
-  const { success, limit, remaining, reset } = await ratelimit.limit(ip);
+
+  // Marketing generation is metered separately and does not also draw on the
+  // booking budget, so a burst of generations cannot lock a guest out of
+  // checking availability.
+  const isMarketing = req.nextUrl.pathname.startsWith("/api/marketing");
+  const limiter = isMarketing ? marketingRatelimit : ratelimit;
+
+  let result;
+  try {
+    result = await limiter.limit(ip);
+  } catch (error) {
+    // Fail open. An Upstash outage taking down bookings would be worse than
+    // the traffic an outage lets through, and the marketing route still has
+    // the provider spend cap behind it.
+    console.error("rate limit check failed, allowing request:", error);
+    return NextResponse.next();
+  }
+
+  const { success, limit, remaining, reset } = result;
 
   if (!success) {
     return NextResponse.json(
