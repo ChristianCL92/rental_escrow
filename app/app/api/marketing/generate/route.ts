@@ -61,10 +61,15 @@ const buildPrompt = (
   const trimmed = notes.trim();
   return [
     `Property: ${property.name}`,
-    `Price: EUR ${property.pricePerNight} per night`,
+    `Price: ${property.pricePerNight} USDC per night`,
     `Description: ${property.description}`,
     "",
     `Campaign notes: ${trimmed === "" ? "none" : trimmed}`,
+    "",
+    // Stays are paid in USDC on chain, and the rest of the site renders prices
+    // as "30 USDC". Left to itself the model reaches for a local currency and
+    // writes "30 €", which is simply the wrong price on every channel.
+    "Stays are paid in USDC. Quote the price exactly as given above. Never convert it to another currency and never use a currency symbol.",
     "",
     "Return a JSON object with exactly these keys:",
     ...channels.map((channel) => `- ${CHANNEL_RULES[channel].rule}`),
