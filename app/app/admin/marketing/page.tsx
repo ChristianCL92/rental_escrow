@@ -2,9 +2,37 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import {
+  Check,
+  Copy,
+  Instagram,
+  MessageCircle,
+  TriangleAlert,
+} from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { properties } from "@/lib/properties";
 // Type-only, so the zod schema it comes from is erased at build time and
 // never reaches the client bundle. Keep this an `import type`.
@@ -18,18 +46,21 @@ const CHANNELS = [
     label: "Instagram caption",
     field: "instagram_caption",
     limit: 200,
+    icon: Instagram,
   },
   {
     id: "whatsapp",
-    label: "WhatsApp message (Spanish)",
+    label: "WhatsApp message",
     field: "whatsapp_message_es",
     limit: 400,
+    icon: MessageCircle,
   },
 ] as const satisfies readonly {
   id: ChannelId;
   label: string;
   field: keyof MarketingCopy;
   limit: number;
+  icon: typeof Instagram;
 }[];
 
 interface GenerateVariables {
@@ -89,7 +120,7 @@ const MarketingPage = () => {
   const [propertyId, setPropertyId] = useState(properties[0]?.id ?? "");
   const [channels, setChannels] = useState<ChannelId[]>(["instagram"]);
   const [notes, setNotes] = useState("");
-  // Seeded from the response, then editable, so the count under each card
+  // Seeded from the response, then editable, so the count on each card
   // tracks what the marketer will actually paste.
   const [drafts, setDrafts] = useState<Partial<Record<ChannelId, string>>>({});
   const [copied, setCopied] = useState<{ id: ChannelId; ok: boolean } | null>(
@@ -132,7 +163,7 @@ const MarketingPage = () => {
     },
   );
 
-  // Any input change clears a stale error, so the panel never describes a
+  // Any input change clears a stale error, so the alert never describes a
   // request the form no longer matches.
   const edit = (change: () => void) => {
     change();
@@ -168,97 +199,134 @@ const MarketingPage = () => {
   const results = copy
     ? CHANNELS.filter((channel) => copy[channel.field] !== undefined)
     : [];
+  const showEmptyState =
+    !mutation.isPending && !mutation.isError && results.length === 0;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-semibold">Marketing copy</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Draft a caption and a message for one property. Nothing is saved.
-      </p>
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Marketing copy
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Draft a caption and a message for one property. Nothing is saved.
+        </p>
+      </header>
 
       <form
-        className="mt-8 space-y-6"
+        className="mt-8"
         onSubmit={(event) => {
           event.preventDefault();
           if (noChannels) return;
           mutation.mutate({ propertyId, channels, notes });
         }}
       >
-        <div className="space-y-2">
-          <label htmlFor="property" className="block text-sm font-medium">
-            Property
-          </label>
-          <select
-            id="property"
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            value={propertyId}
-            onChange={(event) => edit(() => setPropertyId(event.target.value))}
-          >
-            {properties.map((property) => (
-              <option key={property.id} value={property.id}>
-                {property.name} — {property.pricePerNight} USDC per night
-              </option>
-            ))}
-          </select>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Brief</CardTitle>
+          </CardHeader>
 
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Channels</legend>
-          <div className="flex flex-wrap gap-4">
-            {CHANNELS.map((channel) => (
-              <label
-                key={channel.id}
-                className="flex items-center gap-2 text-sm"
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="property">Property</Label>
+              <Select
+                value={propertyId}
+                onValueChange={(value) => edit(() => setPropertyId(value))}
               >
-                <input
-                  type="checkbox"
-                  className="size-4"
-                  checked={channels.includes(channel.id)}
-                  onChange={() => toggleChannel(channel.id)}
-                />
-                {channel.label}
-              </label>
-            ))}
-          </div>
-          {noChannels && (
-            <p className="text-sm text-red-600">Pick at least one channel.</p>
-          )}
-        </fieldset>
+                <SelectTrigger id="property" className="w-full">
+                  <SelectValue placeholder="Choose a property" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      <span className="font-medium">{property.name}</span>
+                      <span className="text-muted-foreground">
+                        {property.pricePerNight} USDC / night
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <label htmlFor="notes" className="block text-sm font-medium">
-            Campaign notes{" "}
-            <span className="font-normal text-muted-foreground">
-              (optional)
-            </span>
-          </label>
-          <textarea
-            id="notes"
-            rows={3}
-            maxLength={2000}
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            placeholder="quiet season, push midweek stays, mention the river"
-            value={notes}
-            onChange={(event) => edit(() => setNotes(event.target.value))}
-          />
-        </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium leading-none">
+                Channels
+              </legend>
+              <div className="grid gap-3 pt-1 sm:grid-cols-2">
+                {CHANNELS.map((channel) => {
+                  const selected = channels.includes(channel.id);
+                  const Icon = channel.icon;
+                  return (
+                    <Label
+                      key={channel.id}
+                      htmlFor={`channel-${channel.id}`}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors",
+                        selected
+                          ? "border-primary/40 bg-accent/40"
+                          : "hover:bg-accent/30",
+                      )}
+                    >
+                      <Checkbox
+                        id={`channel-${channel.id}`}
+                        checked={selected}
+                        onCheckedChange={() => toggleChannel(channel.id)}
+                      />
+                      <Icon className="size-4 text-muted-foreground" />
+                      <span className="text-sm font-normal">
+                        {channel.label}
+                      </span>
+                    </Label>
+                  );
+                })}
+              </div>
+              {noChannels && (
+                <p className="pt-1 text-sm text-destructive">
+                  Pick at least one channel.
+                </p>
+              )}
+            </fieldset>
 
-        <Button
-          type="submit"
-          disabled={noChannels || mutation.isPending}
-          className="cursor-pointer"
-        >
-          {mutation.isPending ? "Generating…" : "Generate"}
-        </Button>
+            <div className="space-y-2">
+              <Label htmlFor="notes">
+                Campaign notes{" "}
+                <span className="font-normal text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Textarea
+                id="notes"
+                rows={3}
+                maxLength={2000}
+                placeholder="quiet season, push midweek stays, mention the river"
+                value={notes}
+                onChange={(event) => edit(() => setNotes(event.target.value))}
+              />
+            </div>
+          </CardContent>
+
+          <CardFooter>
+            <Button type="submit" disabled={noChannels || mutation.isPending}>
+              {mutation.isPending ? "Generating…" : "Generate"}
+            </Button>
+          </CardFooter>
+        </Card>
       </form>
 
+      <Separator className="my-8" />
+
       {mutation.isPending && (
-        <div className="mt-8 space-y-4">
+        <div className="space-y-4">
           {channels.map((id) => (
             <Card key={id}>
-              <CardContent className="space-y-2 pt-6">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
+              <CardHeader>
+                <Skeleton className="h-5 w-40" />
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-4 w-2/3" />
               </CardContent>
             </Card>
           ))}
@@ -266,41 +334,57 @@ const MarketingPage = () => {
       )}
 
       {mutation.isError && (
-        <Card className="mt-8 border-red-300">
-          <CardHeader>
-            <CardTitle className="text-red-700">
-              {describeError(mutation.error).title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm">{mutation.error.message}</p>
+        <Alert variant="destructive">
+          <TriangleAlert />
+          <AlertTitle>{describeError(mutation.error).title}</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-3">
+            <span>{mutation.error.message}</span>
             {describeError(mutation.error).hint && (
-              <p className="text-sm text-muted-foreground">
-                {describeError(mutation.error).hint}
-              </p>
+              <span>{describeError(mutation.error).hint}</span>
             )}
-            <Button variant="outline" onClick={() => mutation.reset()}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => mutation.reset()}
+            >
               Dismiss
             </Button>
-          </CardContent>
-        </Card>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {showEmptyState && (
+        <p className="text-sm text-muted-foreground">
+          Generated copy will appear here.
+        </p>
       )}
 
       {results.length > 0 && !mutation.isPending && (
-        <div className="mt-8 space-y-4">
+        <div className="space-y-4">
           {results.map((channel) => {
             const text = drafts[channel.id] ?? "";
             const over = text.length > channel.limit;
+            const justCopied = copied?.id === channel.id;
+            const Icon = channel.icon;
             return (
               <Card key={channel.id}>
                 <CardHeader>
-                  <CardTitle className="text-base">{channel.label}</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Icon className="size-4 text-muted-foreground" />
+                    {channel.label}
+                  </CardTitle>
+                  <CardAction>
+                    <Badge variant={over ? "destructive" : "secondary"}>
+                      {text.length} / {channel.limit}
+                    </Badge>
+                  </CardAction>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <textarea
+
+                <CardContent>
+                  <Textarea
                     rows={4}
                     aria-label={channel.label}
-                    className="w-full rounded-md border px-3 py-2 text-sm"
                     value={text}
                     onChange={(event) =>
                       setDrafts((current) => ({
@@ -309,29 +393,27 @@ const MarketingPage = () => {
                       }))
                     }
                   />
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={
-                        over
-                          ? "text-sm text-red-600"
-                          : "text-sm text-muted-foreground"
-                      }
-                    >
-                      {text.length} / {channel.limit}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleCopy(channel.id, text)}
-                    >
-                      {copied?.id === channel.id
-                        ? copied.ok
-                          ? "Copied"
-                          : "Copy failed"
-                        : "Copy"}
-                    </Button>
-                  </div>
                 </CardContent>
+
+                <CardFooter className="justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCopy(channel.id, text)}
+                  >
+                    {justCopied && copied.ok ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
+                    {justCopied
+                      ? copied.ok
+                        ? "Copied"
+                        : "Copy failed"
+                      : "Copy"}
+                  </Button>
+                </CardFooter>
               </Card>
             );
           })}
