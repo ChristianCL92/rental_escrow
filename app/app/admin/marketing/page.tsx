@@ -63,6 +63,8 @@ const CHANNELS = [
   icon: typeof Instagram;
 }[];
 
+const NOTES_LIMIT = 2000;
+
 interface GenerateVariables {
   propertyId: string;
   channels: ChannelId[];
@@ -195,6 +197,8 @@ const MarketingPage = () => {
   };
 
   const noChannels = channels.length === 0;
+  const notesOver = notes.length > NOTES_LIMIT;
+  const cannotSubmit = noChannels || notesOver;
   const copy = mutation.data;
   const results = copy
     ? CHANNELS.filter((channel) => copy[channel.field] !== undefined)
@@ -217,7 +221,7 @@ const MarketingPage = () => {
         className="mt-8"
         onSubmit={(event) => {
           event.preventDefault();
-          if (noChannels) return;
+          if (cannotSubmit) return;
           mutation.mutate({ propertyId, channels, notes });
         }}
       >
@@ -289,25 +293,45 @@ const MarketingPage = () => {
             </fieldset>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">
-                Campaign notes{" "}
-                <span className="font-normal text-muted-foreground">
-                  (optional)
-                </span>
-              </Label>
+              <div className="flex items-baseline justify-between gap-2">
+                <Label htmlFor="notes">
+                  Campaign notes{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                {notes.length > 0 && (
+                  <span
+                    className={cn(
+                      "text-xs tabular-nums",
+                      notesOver
+                        ? "font-medium text-destructive"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {notes.length} / {NOTES_LIMIT}
+                  </span>
+                )}
+              </div>
               <Textarea
                 id="notes"
                 rows={3}
-                maxLength={2000}
+                aria-invalid={notesOver}
                 placeholder="quiet season, push midweek stays, mention the river"
                 value={notes}
                 onChange={(event) => edit(() => setNotes(event.target.value))}
               />
+              {notesOver && (
+                <p className="text-sm text-destructive">
+                  {notes.length - NOTES_LIMIT} characters over the limit. Trim
+                  the notes to generate.
+                </p>
+              )}
             </div>
           </CardContent>
 
           <CardFooter>
-            <Button type="submit" disabled={noChannels || mutation.isPending}>
+            <Button type="submit" disabled={cannotSubmit || mutation.isPending}>
               {mutation.isPending ? "Generating…" : "Generate"}
             </Button>
           </CardFooter>
