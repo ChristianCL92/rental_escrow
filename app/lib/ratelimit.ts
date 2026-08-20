@@ -12,14 +12,6 @@ export const ratelimit = new Ratelimit({
   // analytics: true, // Enable on paid tier for monitoring dashboard
 });
 
-/**
- * Marketing generation calls a model provider, so every request costs real
- * money rather than a database read. It gets its own far tighter budget.
- *
- * The prefix must stay distinct from the one above: sharing it would make
- * booking traffic eat the marketing allowance and vice versa, since Upstash
- * keys on prefix plus identifier.
- */
 export const marketingRatelimit = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(4, "1 h"),
