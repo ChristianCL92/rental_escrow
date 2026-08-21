@@ -2,7 +2,7 @@
 
 A fullstack vacation rental dApp for a family property in the Colombian Andes. Guests book stays and pay with USDC through a trustless escrow system on Solana without middleman.
 
-**See [../../README.md](../../README.md) for full project context.**
+**Monorepo root.** Frontend setup and component architecture in [app/README.md](./app/README.md); the Anchor program in [programs/rental_escrow/README.md](./programs/rental_escrow/README.md).
 
 ## Overview
 
