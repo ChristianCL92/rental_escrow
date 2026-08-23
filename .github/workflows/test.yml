@@ -47,6 +47,13 @@ jobs:
         run: |
           solana --version
           anchor --version
+          # CI builds with cargo-build-sbf 2.1.0 (platform-tools v1.43, rustc
+          # 1.79.0-dev) even though the CLI above is 3.0.10, which locally
+          # brings v1.51 and rustc 1.84.1. Cargo.lock is pinned to suit 1.79
+          # because of it, so print the version and its origin: if this ever
+          # reports 3.0.10, the pin in Cargo.lock can be lifted.
+          cargo-build-sbf --version
+          which -a cargo-build-sbf || true
 
       - name: Setup wallet for testing
         run: |
