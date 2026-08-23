@@ -35,7 +35,14 @@ app/
 │   ├── idl/rental_escrow.json   # Program IDL (auto-generated)
 │   ├── types/rental_escrow.ts   # TypeScript bindings (auto-generated)
 │   ├── properties.ts            # Property data
+│   ├── llm.ts                   # Anthropic call, single swappable seam
+│   ├── marketing/schema.ts      # Zod output contract for generated copy
+│   ├── ratelimit.ts             # Upstash limiters (bookings + marketing)
 │   └── utils.ts                 # Helper functions
+├── app/
+│   ├── tools/marketing/page.tsx           # Marketing copy generator UI
+│   └── api/marketing/generate/route.ts    # Generation + validation endpoint
+├── proxy.ts                     # Per-route rate limiting (Next 16 middleware)
 └── page.tsx, layout.tsx         # Root pages
 ```
 
@@ -86,6 +93,32 @@ Uses `@solana/wallet-adapter-react` with browser-based wallets (Phantom, Solflar
 - Derives PDAs for escrow accounts: `[b"escrow", guest_pubkey, apartment_id_le_u64]`
 - Converts between UI amounts and USDC integers (USDC_DECIMALS = 6)
 - Encapsulates all Anchor RPC calls
+
+### Marketing Copy Generation (`/tools/marketing`)
+
+Client page → `POST /api/marketing/generate` → Anthropic, via a TanStack
+`useMutation`. Three pieces, deliberately separated:
+
+- **`lib/llm.ts`** — the only file that knows a provider exists. Exposes one
+  function, `generateText({ system, prompt })`, and reads `ANTHROPIC_API_KEY`
+  from `process.env` at call time. Distinct `LlmError`s for refusal, token
+  truncation, empty content, non-2xx and network failure, so the route can map
+  them to different statuses (429/529 upstream → 503, everything else → 502).
+- **`lib/marketing/schema.ts`** — the Zod output contract. Strips markdown
+  fences, then enforces 20–200 characters ending in 3–5 hashtags (Instagram)
+  and 20–400 characters in Spanish ending in a question mark (WhatsApp).
+  Covered by `bun run test:unit`.
+- **`app/api/marketing/generate/route.ts`** — builds the prompt from the
+  property plus notes, requests only the selected channels, validates, and
+  retries **once** with the validation errors appended before returning 502.
+
+The route also checks that every requested channel came back and drops any
+that were not requested — the schema alone cannot do this, since it has no
+idea what the caller asked for.
+
+Nothing is persisted. `max_tokens` is coupled to the effort setting in
+`llm.ts`: at low effort a retry uses ~165 of 1000 tokens, at medium ~828, so
+raising effort without raising `max_tokens` would truncate the retry.
 
 ### Token Account Management
 
@@ -181,7 +214,19 @@ This project uses **Tailwind CSS** with the shadcn/ui component library. Customi
 
 ### Automated testing
 
-Frontend tests can be added using Jest or Vitest. Currently focused on integration with on-chain program.
+```bash
+bun run test:unit   # Bun's test runner, scoped to lib/
+bun run test:e2e    # Playwright (requires: npx playwright install)
+```
+
+`test:unit` is scoped to `lib` on purpose — unscoped, Bun's runner would also
+collect the Playwright specs under `e2e/` and choke on their imports. It
+currently covers the marketing output contract in `lib/marketing/schema.ts`
+(hashtag counting, the Spanish heuristic, fence stripping, channel selection).
+
+`*.test.ts` is excluded in `tsconfig.json`, since `next build` typechecks and
+would otherwise fail on the `bun:test` import. Adding `@types/bun` would let
+that exclusion be dropped.
 
 ## Troubleshooting
 

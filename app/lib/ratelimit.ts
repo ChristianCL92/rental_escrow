@@ -11,3 +11,10 @@ export const ratelimit = new Ratelimit({
   prefix: "el-solar",
   // analytics: true, // Enable on paid tier for monitoring dashboard
 });
+
+export const marketingRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(4, "1 h"),
+  prefix: "el-solar-marketing",
+  // analytics: true, // Enable on paid tier for monitoring dashboard
+});
