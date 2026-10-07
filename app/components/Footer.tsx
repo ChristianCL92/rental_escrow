@@ -7,7 +7,6 @@ const Footer = () => {
       <div className="flex flex-wrap justify-around items-center gap-y-3">
         <span>© El Solar Copyright {new Date().getFullYear()}</span>
         <div className="flex items-center gap-4">
-          {/* The generator writes for these two channels, so it sits with them. */}
           <Link
             href="/tools/marketing"
             className="text-sm underline underline-offset-4 hover:text-gray-300 transition-colors"
