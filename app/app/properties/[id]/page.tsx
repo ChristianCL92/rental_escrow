@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { getPropertyById } from "@/lib/properties";
 import { Button } from "@/components/ui/button";
 import BookingCard from "@/components/BookingCard";
@@ -18,15 +18,16 @@ const PropertyPage = async ({ params }: PropertyPageProps) => {
     notFound();
   }
   return (
-    <main className="container mx-auto px-4 py-8">
-      <Link href="/" className="inline-block mb-6">
-        <Button variant="ghost" className="gap-2 cursor-pointer">
-          ← Back to Properties
-        </Button>
-      </Link>
+    <div className="container mx-auto px-4 py-8">
+      <Button asChild variant="ghost" className="mb-6 gap-2">
+        <Link href="/">
+          <ArrowLeft aria-hidden="true" />
+          Back to Properties
+        </Link>
+      </Button>
       <div className="grid gap-8 lg:grid-cols-2">
         <div>
-          <ImageCarousel images={property.images} alt={property.name} />
+          <ImageCarousel images={property.images} label={property.name} />
           <div className="mt-6">
             <div className="flex items-start justify-between">
               <div>
@@ -83,7 +84,7 @@ const PropertyPage = async ({ params }: PropertyPageProps) => {
           />
         </div>
       </div>
-    </main>
+    </div>
   );
 };
 export default PropertyPage;
