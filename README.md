@@ -243,6 +243,8 @@ Push/PR to main → Install toolchain → Setup wallet → anchor test
 | `NEXT_PUBLIC_OWNER_ADDRESS`     | Client | Owner wallet for UI gating + program calls |
 | `NEXT_PUBLIC_USDC_MINT_ADDRESS` | Client | USDC token mint on target cluster          |
 | `NEXT_PUBLIC_SUPABASE_URL`      | Client | Supabase project URL                       |
+| `NEXT_PUBLIC_SOLANA_NETWORK`    | Client | `devnet` (default), `testnet` or `mainnet-beta`; drives the RPC, explorer links and the "Test network" badge |
+| `NEXT_PUBLIC_SOLANA_RPC_URL`    | Client | Optional RPC endpoint; defaults to the public URL of that network |
 | `SUPABASE_SERVICE_ROLE_KEY`     | Server | Supabase admin key (API routes only)       |
 | `ANTHROPIC_API_KEY`             | Server | Marketing copy generation (never sent to the browser) |
 | `UPSTASH_REDIS_REST_URL`        | Server | Rate limiting store                        |

@@ -80,6 +80,14 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 ### Wallet Integration
 
 Uses `@solana/wallet-adapter-react` with browser-based wallets (Phantom, Solflare, etc.). The `SolanaWalletProvider` wraps the entire app.
+The cluster comes from `NEXT_PUBLIC_SOLANA_NETWORK` (default `devnet`, see `lib/solana/network.ts`), and the RPC endpoint from `NEXT_PUBLIC_SOLANA_RPC_URL` when set.
+On devnet or testnet the nav and booking card show a "Test network - no real money" badge, which disappears on `mainnet-beta`.
+
+### Booking Flow (`components/BookingCard.tsx`)
+
+- Explains the escrow rules before payment; the wording mirrors `cancel_booking.rs` and `release_payment.rs` through `lib/booking/escrow.ts`.
+- Shows each step of the two wallet approvals, maps raw wallet, Anchor and API errors to plain language with `lib/booking/errors.ts`, and keeps the raw text behind "Details".
+- E2E tests drive it with an injected Wallet Standard wallet and a mocked RPC (`e2e/fixtures/`), so no browser extension or funded wallet is needed.
 
 ### Escrow Queries (`useEscrowQueries.ts`)
 

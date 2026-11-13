@@ -34,6 +34,7 @@ export const GET = async (req: NextRequest) => {
 
     return NextResponse.json({ booking: data }, { status: 200 });
   } catch (error) {
+    console.error("Find booking error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

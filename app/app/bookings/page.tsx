@@ -1,7 +1,6 @@
 "use client";
-import { Wallet } from "lucide-react";
+import { CircleAlert, Wallet } from "lucide-react";
 import LoadingBookingSkeleton from "./loading";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -10,9 +9,15 @@ import GuestBookings from "@/components/GuestBookings";
 import { useState } from "react";
 import useBookingAPI from "@/hooks/useBookingAPI";
 import { IoMdArrowBack } from "react-icons/io";
+import ConnectWalletButton from "@/components/wallet/ConnectWalletButton";
+import WalletHelp from "@/components/wallet/WalletHelp";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import ErrorDetails from "@/components/booking/ErrorDetails";
+import { errorDetail } from "@/lib/booking/errors";
 
 export const GuestPage = () => {
   const {
+    now,
     bookings,
     refetch,
     isLoading,
@@ -30,21 +35,32 @@ export const GuestPage = () => {
 
   const { connected } = useWallet();
   const [cancelId, setCancelId] = useState<number | null>(null);
+  const [failedCancelId, setFailedCancelId] = useState<number | null>(null);
   const { findBookingId, updateBooking } = useBookingAPI();
 
-  const handleCancelation = async (apartmentId: number, checkInDate: Date) => {
+  const handleCancelation = (apartmentId: number, checkInDate: Date) => {
     setCancelId(apartmentId);
+    setFailedCancelId(null);
     cancelBookingMutation(
       { apartmentId },
-
       {
-        onSettled: () => {
-          setCancelId(null);
+        // Free the dates only once the refund went through on-chain; a
+        // rejected or failed cancel leaves the booking and its dates held.
+        onSuccess: async () => {
+          try {
+            const { booking } = await findBookingId(apartmentId, checkInDate);
+            await updateBooking(booking.id, "cancelled");
+          } catch (recordError) {
+            console.error(
+              "refund done but booking record not updated",
+              recordError,
+            );
+          }
         },
+        onError: () => setFailedCancelId(apartmentId),
+        onSettled: () => setCancelId(null),
       },
     );
-    const { booking } = await findBookingId(apartmentId, checkInDate);
-    await updateBooking(booking.id, "cancelled");
   };
 
   if (!connected) {
@@ -66,8 +82,9 @@ export const GuestPage = () => {
             Connect your wallet to view your booking history
           </p>
           <div className="mt-6 flex justify-center">
-            <WalletMultiButton />
+            <ConnectWalletButton size="lg" />
           </div>
+          <WalletHelp className="mt-4" />
         </div>
       </div>
     );
@@ -136,9 +153,19 @@ export const GuestPage = () => {
         </div>
       )}
       {isError && (
-        <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-lg">
-          {error instanceof Error ? error.message : "Failed to load bookings"}
-        </div>
+        <Alert variant="destructive" className="mt-4">
+          <CircleAlert aria-hidden="true" />
+          <AlertTitle className="line-clamp-none font-semibold">
+            We couldn&apos;t load your bookings
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              Your bookings are safe on the Solana network. Try again in a
+              moment.
+            </p>
+            <ErrorDetails detail={errorDetail(error)} />
+          </AlertDescription>
+        </Alert>
       )}
       <div className="grid gap-4 md:grid-cols-2 mt-6">
         {bookings.map((booking) => {
@@ -146,10 +173,13 @@ export const GuestPage = () => {
             <GuestBookings
               key={booking.publicKey.toBase58()}
               booking={booking}
+              now={now}
               isCanceling={isCanceling}
               onCancel={handleCancelation}
               cancelingId={cancelId}
-              cancelError={cancelError}
+              cancelError={
+                failedCancelId === booking.apartmentId ? cancelError : null
+              }
               cancelReset={cancelReset}
             />
           );

@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar } from "./ui/calendar";
 import { Button } from "./ui/button";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { DateRange } from "react-day-picker";
 import {
   differenceInDays,
@@ -11,8 +14,30 @@ import {
   format,
   startOfDay,
 } from "date-fns";
+import { CalendarX2, Loader2, Wallet } from "lucide-react";
 import useRentalProgram from "@/hooks/useRentalProgram";
 import useBookingAPI from "@/hooks/useBookingAPI";
+import {
+  ActiveBookingError,
+  BookingStage,
+  DatesTakenError,
+  describeBookingError,
+  errorDetail,
+  FriendlyError,
+} from "@/lib/booking/errors";
+import { escrowCheckInTime, formatDeadline } from "@/lib/booking/escrow";
+import NetworkBadge from "./NetworkBadge";
+import PaymentExplainer from "./booking/PaymentExplainer";
+import BookingProgress, {
+  ProgressStep,
+  stepAnnouncement,
+} from "./booking/BookingProgress";
+import BookingErrorAlert from "./booking/BookingErrorAlert";
+import BookingConfirmation, {
+  ConfirmedBooking,
+} from "./booking/BookingConfirmation";
+import ErrorDetails from "./booking/ErrorDetails";
+import WalletHelp from "./wallet/WalletHelp";
 
 interface BookingProps {
   pricePerNight: number;
@@ -25,15 +50,20 @@ interface BookedDateRange {
 }
 
 const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
-  const { connected } = useWallet();
-  const [loading, setLoading] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-  const [dateError, setDateError] = useState<string | null>(null);
-  const [desabledDates, setDesabledDates] = useState<Date[]>([]);
+  const { connected, connecting } = useWallet();
+  const { setVisible } = useWalletModal();
+  const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [bookingSuccess, setBookingSuccess] = useState<string | null>(null);
-  const { createEscrow, OWNER_ADDRESS, USDC_MINT, createEscrowTokenAccount } =
-    useRentalProgram();
+  const [step, setStep] = useState<ProgressStep | null>(null);
+  const [bookingError, setBookingError] = useState<FriendlyError | null>(null);
+  const [confirmed, setConfirmed] = useState<ConfirmedBooking | null>(null);
+  const {
+    createEscrow,
+    OWNER_ADDRESS,
+    USDC_MINT,
+    createEscrowTokenAccount,
+    hasActiveBooking,
+  } = useRentalProgram();
   const {
     checkDatesAvailable,
     createPending,
@@ -41,6 +71,24 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
     rollbackBooking,
     datesBooked,
   } = useBookingAPI();
+
+  const bookedDatesKey = ["booked-dates", apartmentId];
+  const bookedDatesQuery = useQuery<{ bookings: BookedDateRange[] }>({
+    queryKey: bookedDatesKey,
+    queryFn: () => datesBooked(apartmentId),
+    retry: 1,
+  });
+
+  const disabledDates = useMemo(
+    () =>
+      (bookedDatesQuery.data?.bookings ?? []).flatMap((booking) =>
+        eachDayOfInterval({
+          start: new Date(booking.check_in_date),
+          end: new Date(booking.check_out_date),
+        }).slice(0, -1),
+      ),
+    [bookedDatesQuery.data],
+  );
 
   const { checkIn, checkOut, nights, totalPrice } = useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) {
@@ -56,50 +104,40 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
     };
   }, [dateRange, pricePerNight]);
 
-  useEffect(() => {
-    const bookedDates = async () => {
-      try {
-        const { bookings } = await datesBooked(apartmentId);
-        const allDates = bookings.flatMap((booking: BookedDateRange) =>
-          eachDayOfInterval({
-            start: new Date(booking.check_in_date),
-            end: new Date(booking.check_out_date),
-          }).slice(0, -1),
-        );
+  const deadline =
+    checkIn && nights > 0 ? formatDeadline(escrowCheckInTime(checkIn)) : null;
+  const busy = step !== null && step !== "confirmed";
 
-        setDesabledDates(allDates);
-      } catch (error) {
-        console.error("failed to access booked dates", error);
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to display disabled dates in calendar";
-        setDateError(message);
-      }
-    };
-    bookedDates();
-  }, [apartmentId, datesBooked]);
+  const refreshBookedDates = () =>
+    queryClient.invalidateQueries({ queryKey: bookedDatesKey });
 
   const handleBooking = async () => {
-    if (!checkIn || !checkOut) return;
-    setLoading(true);
-    setBookingError(null);
-    setBookingSuccess(null);
+    if (!connected) {
+      setVisible(true);
+      return;
+    }
+    if (!checkIn || !checkOut || !deadline) return;
 
+    setBookingError(null);
+    setConfirmed(null);
+
+    let stage: BookingStage = "reserving";
     let bookingId: string | null = null;
+    let txSignature: string | null = null;
+    setStep("reserving");
 
     try {
-      const { available, conflicts } = await checkDatesAvailable({
+      if (await hasActiveBooking(apartmentId)) {
+        throw new ActiveBookingError();
+      }
+
+      const { available } = await checkDatesAvailable({
         apartmentId,
         checkInDate: checkIn,
         checkOutDate: checkOut,
       });
       if (!available) {
-        setBookingError(
-          `Dates are not available. There's a booking: ${conflicts[0].check_in_date} to ${conflicts[0].check_out_date}`,
-        );
-        setLoading(false);
-        return;
+        throw new DatesTakenError();
       }
 
       const { booking } = await createPending({
@@ -109,40 +147,138 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
       });
       bookingId = booking.id;
 
+      stage = "account";
+      setStep("account");
       await createEscrowTokenAccount(apartmentId);
 
-      const txSignature = await createEscrow({
+      stage = "payment";
+      setStep("payment");
+      txSignature = await createEscrow({
         apartmentId: apartmentId,
         amount: totalPrice,
         checkInDate: checkIn,
         ownerAddress: OWNER_ADDRESS,
         usdcMint: USDC_MINT,
       });
-      if (bookingId) {
-        await updateBooking(bookingId, "confirmed", txSignature);
-      }
-      setBookingSuccess(txSignature);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create booking";
-      setBookingError(message);
+      console.error("booking failed at stage", stage, error);
+      const friendly = describeBookingError(error, {
+        stage,
+        totalUsdc: totalPrice,
+      });
+      setBookingError(friendly);
+      setStep(null);
       if (bookingId) {
-        await rollbackBooking(bookingId);
+        try {
+          await rollbackBooking(bookingId);
+        } catch (rollbackError) {
+          console.error("failed to release the pending booking", rollbackError);
+        }
       }
-    } finally {
-      setLoading(false);
+      if (friendly.action === "pick-dates") {
+        void refreshBookedDates();
+      }
+      return;
     }
+    if (!txSignature) return;
+
+    // The USDC is in escrow from here on, so the guest's booking stands even
+    // if recording the signature fails: the pending row still blocks the
+    // dates, and My Bookings reads the escrow from the chain.
+    if (bookingId) {
+      try {
+        await updateBooking(bookingId, "confirmed", txSignature);
+      } catch (recordError) {
+        console.error(
+          "escrow funded but booking record not updated",
+          recordError,
+        );
+      }
+    }
+
+    setConfirmed({
+      checkIn,
+      checkOut,
+      nights,
+      totalUsdc: totalPrice,
+      deadline,
+      txSignature,
+    });
+    setStep("confirmed");
+    setDateRange(undefined);
+    void refreshBookedDates();
   };
 
+  const announcement = confirmed
+    ? `Booking confirmed. ${confirmed.totalUsdc} USDC is held in escrow until check-in.`
+    : step
+      ? stepAnnouncement(step)
+      : "";
+
+  const buttonContent = !connected ? (
+    connecting ? (
+      "Connecting wallet..."
+    ) : (
+      <>
+        <Wallet aria-hidden="true" />
+        Connect wallet to pay
+      </>
+    )
+  ) : busy ? (
+    <>
+      <Loader2 aria-hidden="true" className="animate-spin" />
+      Booking in progress...
+    </>
+  ) : nights === 0 ? (
+    "Select dates"
+  ) : (
+    `Book for ${totalPrice} USDC`
+  );
+
   return (
-    <div className="rounded-md border bg-white p-4 shadow-lg sm:p-6">
-      <h2 className="text-xl font-semibold">Book your stay</h2>
+    <div
+      className="rounded-md border bg-white p-4 shadow-lg sm:p-6"
+      data-testid="booking-card"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <h2 className="text-xl font-semibold">Book your stay</h2>
+        <NetworkBadge />
+      </div>
       <p className="mt-2 text-muted-foreground">
         <span className="text-lg font-bold text-foreground">
-          {pricePerNight}USDC
+          {pricePerNight} USDC
         </span>{" "}
         / night
       </p>
+      {bookedDatesQuery.isError && (
+        <Alert
+          variant="warning"
+          role="status"
+          className="mt-4"
+          data-testid="booked-dates-warning"
+        >
+          <CalendarX2 aria-hidden="true" />
+          <AlertTitle className="line-clamp-none font-semibold">
+            Some taken nights may not be shown
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              We couldn&apos;t load which nights are already booked, so the
+              calendar may let you pick a taken night. We check your dates again
+              before you pay.
+            </p>
+            <button
+              type="button"
+              onClick={() => void bookedDatesQuery.refetch()}
+              disabled={bookedDatesQuery.isFetching}
+              className="cursor-pointer font-semibold underline underline-offset-2 hover:decoration-2 disabled:cursor-wait disabled:opacity-70"
+            >
+              {bookedDatesQuery.isFetching ? "Trying again..." : "Try again"}
+            </button>
+            <ErrorDetails detail={errorDetail(bookedDatesQuery.error)} />
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="mt-4 flex justify-center">
         <Calendar
           mode="range"
@@ -150,7 +286,11 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
           onSelect={setDateRange}
           numberOfMonths={2}
           className="rounded-lg border"
-          disabled={[(date) => date < startOfDay(new Date()), ...desabledDates]}
+          disabled={
+            busy
+              ? true
+              : [(date) => date < startOfDay(new Date()), ...disabledDates]
+          }
           startMonth={new Date()}
         />
       </div>
@@ -170,72 +310,57 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">
-              {pricePerNight} USDC × {nights} nights
+              {pricePerNight} USDC × {nights} night{nights > 1 ? "s" : ""}
             </span>
             <span className="font-medium">{totalPrice} USDC</span>
           </div>
         </div>
       )}
-      {bookingSuccess && (
-        <div className="mt-4 p-4 bg-green-100 border border-green-400 rounded-lg">
-          <button
-            className="float-right text-gray-950 hover:text-gray-600 font-bold cursor-pointer"
-            onClick={() => setBookingSuccess(null)}
-          >
-            X
-          </button>
-          <p className="font-semibold text-green-800">Booking Confirmed!</p>
-          <a
-            href={`https://explorer.solana.com/tx/${bookingSuccess}?cluster=devnet`}
-            target="_blank"
-            className="text-sm text-green-600 underline"
-          >
-            View transaction
-          </a>
+      <div className="mt-4 border-t pt-4">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold">Total</span>
+          <span className="text-2xl font-bold">
+            {nights > 0 ? `${totalPrice} USDC` : "-- USDC"}
+          </span>
         </div>
-      )}
-      {bookingError && (
-        <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-lg">
-          <button
-            onClick={() => setBookingError(null)}
-            className="float-right text-gray-950 hover:text-gray-600 font-bold cursor-pointer"
-          >
-            X
-          </button>
-          <p className="font-semibold text-red-800">Booking Failed</p>
-          <p className="text-sm text-red-600">{bookingError}</p>
-        </div>
-      )}
-      {dateError && (
-        <div className="mt-4 p-4 bg-yellow-200 border border-yellow-400 rounded-lg">
-          <p className="text-sm text-yellow-600">{dateError}</p>
-        </div>
-      )}
-      <div className="mt-4 flex items-center justify-between border-t pt-4">
-        <span className="font-semibold">Total</span>
-        <span className="text-2xl font-bold">
-          {nights > 0 ? `${totalPrice} USDC` : "-- USDC"}
-        </span>
+        <p
+          className="mt-1 text-right text-xs text-muted-foreground"
+          data-testid="fee-note"
+        >
+          <span className="block">Plus a small network fee, paid in SOL.</span>
+          <span className="block">1 USDC ≈ 1 US dollar.</span>
+        </p>
       </div>
+      <PaymentExplainer deadline={deadline} />
+      {busy && step && <BookingProgress step={step} totalUsdc={totalPrice} />}
+      {bookingError && (
+        <BookingErrorAlert
+          className="mt-4"
+          error={bookingError}
+          onDismiss={() => setBookingError(null)}
+        />
+      )}
+      {confirmed && (
+        <BookingConfirmation
+          booking={confirmed}
+          onDismiss={() => {
+            setConfirmed(null);
+            setStep(null);
+          }}
+        />
+      )}
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
       <Button
-        className="mt-4 w-full"
+        className="mt-4 w-full cursor-pointer"
         size="lg"
-        disabled={!connected || nights === 0 || loading}
+        disabled={connected ? nights === 0 || busy : connecting}
         onClick={handleBooking}
       >
-        {!connected
-          ? "Connect Wallet to Book"
-          : nights === 0
-            ? "Select Dates"
-            : loading
-              ? "Processing..."
-              : `Book for ${totalPrice} USDC`}
+        {buttonContent}
       </Button>
-      {!connected && (
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          Connect your wallet to make a booking
-        </p>
-      )}
+      {!connected && <WalletHelp className="mt-3 text-center" />}
     </div>
   );
 };

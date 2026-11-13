@@ -42,6 +42,8 @@ test.describe("Navigation", () => {
   test("wallet connect button present", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.locator(".wallet-adapter-button")).toBeVisible();
+    await expect(
+      page.locator("nav").getByRole("button", { name: "Connect wallet" }),
+    ).toBeVisible();
   });
 });
