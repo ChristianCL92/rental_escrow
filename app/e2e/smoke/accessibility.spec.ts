@@ -127,10 +127,15 @@ test.describe("Keyboard and screen-reader basics", () => {
   test("calendar days are 44px tap targets on phones", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/properties/room-001");
+    // The calendar re-renders after hydration, so poll until a measurable
+    // day button is laid out instead of measuring the first render.
     const day = page.locator("button[data-day]").first();
-    const box = await day.boundingBox();
-    expect(box!.width).toBeGreaterThanOrEqual(44);
-    expect(box!.height).toBeGreaterThanOrEqual(44);
+    await expect
+      .poll(async () => (await day.boundingBox())?.width ?? 0)
+      .toBeGreaterThanOrEqual(44);
+    await expect
+      .poll(async () => (await day.boundingBox())?.height ?? 0)
+      .toBeGreaterThanOrEqual(44);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - window.innerWidth,
     );
@@ -140,7 +145,12 @@ test.describe("Keyboard and screen-reader basics", () => {
   test("calendar days stay compact on desktop", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/properties/room-001");
-    const box = await page.locator("button[data-day]").first().boundingBox();
-    expect(box!.width).toBeLessThan(40);
+    const day = page.locator("button[data-day]").first();
+    await expect
+      .poll(async () => {
+        const width = (await day.boundingBox())?.width ?? 0;
+        return width > 0 && width < 40;
+      })
+      .toBe(true);
   });
 });
