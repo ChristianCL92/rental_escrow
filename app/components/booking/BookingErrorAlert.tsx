@@ -5,7 +5,6 @@ import { CircleAlert } from "lucide-react";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { FriendlyError } from "@/lib/booking/errors";
-import { isTestNetwork, SOLANA_NETWORK } from "@/lib/solana/network";
 import { cn } from "@/lib/utils";
 import DismissButton from "./DismissButton";
 import ErrorDetails from "./ErrorDetails";
@@ -33,7 +32,6 @@ const ExternalLink = ({
 
 const ErrorAction = ({ action }: { action: FriendlyError["action"] }) => {
   const { setVisible } = useWalletModal();
-  const testNetwork = isTestNetwork(SOLANA_NETWORK);
 
   switch (action) {
     case "my-bookings":
@@ -43,17 +41,17 @@ const ErrorAction = ({ action }: { action: FriendlyError["action"] }) => {
         </Link>
       );
     case "get-sol":
-      return testNetwork ? (
+      return (
         <ExternalLink href="https://faucet.solana.com">
           Get free test SOL
         </ExternalLink>
-      ) : null;
+      );
     case "get-usdc":
-      return testNetwork ? (
+      return (
         <ExternalLink href="https://faucet.circle.com">
           Get free test USDC
         </ExternalLink>
-      ) : null;
+      );
     case "reconnect":
       return (
         <button

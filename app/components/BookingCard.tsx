@@ -168,7 +168,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
       });
       setBookingError(friendly);
       setStep(null);
-      if (bookingId) {
+      if (bookingId && !friendly.paymentMayHaveLanded) {
         try {
           await rollbackBooking(bookingId);
         } catch (rollbackError) {

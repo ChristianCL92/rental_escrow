@@ -21,6 +21,11 @@ export interface FriendlyError {
   message: string;
   detail: string;
   action?: ErrorAction;
+  /**
+   * The payment may have reached the chain, so the pending booking must
+   * keep holding the dates instead of being released.
+   */
+  paymentMayHaveLanded?: boolean;
 }
 
 /** A non-2xx response from the app's own /api routes. */
@@ -252,6 +257,7 @@ export const describeBookingError = (
         "The network did not confirm the payment in time. Check My Bookings before trying again, so you don't pay twice.",
       detail,
       action: "my-bookings",
+      paymentMayHaveLanded: true,
     };
   }
 

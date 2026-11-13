@@ -1,6 +1,6 @@
 import { FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isTestNetwork, SOLANA_NETWORK } from "@/lib/solana/network";
+import { IS_TEST_NETWORK, SOLANA_NETWORK } from "@/lib/solana/network";
 
 export const TEST_NETWORK_LABEL = "Test network - no real money";
 
@@ -15,7 +15,7 @@ interface NetworkBadgeProps {
  * have no value. Renders nothing on mainnet, so it disappears at launch.
  */
 const NetworkBadge = ({ variant = "pill", className }: NetworkBadgeProps) => {
-  if (!isTestNetwork(SOLANA_NETWORK)) return null;
+  if (!IS_TEST_NETWORK) return null;
 
   return (
     <p

@@ -25,6 +25,8 @@ export interface MockState {
   urls: string[];
   /** Signatures of transactions sent to the RPC, in order. */
   sent: string[];
+  /** The network drops while the payment (second) transaction is sent. */
+  paymentSendFails: boolean;
 }
 
 export const createMockState = (
@@ -39,6 +41,7 @@ export const createMockState = (
   calls: [],
   urls: [],
   sent: [],
+  paymentSendFails: false,
   ...overrides,
 });
 
@@ -153,6 +156,16 @@ const rpcResult = (state: MockState, call: RpcCall): unknown => {
 export const mockSolanaRpc = async (page: Page, state: MockState) => {
   await page.route(RPC_URL, async (route) => {
     const body = route.request().postDataJSON() as RpcCall | RpcCall[];
+    const methods = (Array.isArray(body) ? body : [body]).map((c) => c.method);
+    if (
+      state.paymentSendFails &&
+      state.sent.length >= 1 &&
+      methods.includes("sendTransaction")
+    ) {
+      state.calls.push("rpc:sendTransaction");
+      await route.abort("internetdisconnected");
+      return;
+    }
     const answer = (call: RpcCall) => {
       state.calls.push(`rpc:${call.method}`);
       try {

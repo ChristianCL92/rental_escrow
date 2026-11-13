@@ -228,6 +228,23 @@ test.describe("Booking with a wallet", () => {
     await expect(error).toBeHidden();
   });
 
+  test("a payment the network may have taken keeps the dates held", async ({
+    page,
+  }) => {
+    state.paymentSendFails = true;
+    await connectTestWallet(page);
+    await selectTwoNights(page);
+    await page.getByRole("button", { name: "Book for 60 USDC" }).click();
+
+    const error = page.getByTestId("booking-error");
+    await expect(error).toContainText("We couldn't confirm your payment");
+    await expect(
+      error.getByRole("link", { name: "Go to My Bookings" }),
+    ).toHaveAttribute("href", "/bookings");
+    expect(state.calls).toContain("POST /api/bookings");
+    expect(state.calls).not.toContain("DELETE /api/bookings");
+  });
+
   test("taken dates are explained in plain words", async ({ page }) => {
     state.available = false;
     await connectTestWallet(page);

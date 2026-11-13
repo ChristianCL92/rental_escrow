@@ -150,6 +150,26 @@ describe("describeBookingError", () => {
     expect(result.title).toBe("We couldn't confirm your payment");
     expect(result.message).toContain("don't pay twice");
     expect(result.action).toBe("my-bookings");
+    expect(result.paymentMayHaveLanded).toBe(true);
+  });
+
+  it("keeps the dates held when the payment request lost the network", () => {
+    const result = describeBookingError(new TypeError("Failed to fetch"), {
+      stage: "payment",
+    });
+    expect(result.paymentMayHaveLanded).toBe(true);
+  });
+
+  it("releases the dates when the payment certainly did not move USDC", () => {
+    expect(
+      describeBookingError(rejection, { stage: "payment" })
+        .paymentMayHaveLanded,
+    ).toBeFalsy();
+    expect(
+      describeBookingError(new TypeError("Failed to fetch"), {
+        stage: "account",
+      }).paymentMayHaveLanded,
+    ).toBeFalsy();
   });
 
   it("keeps a raw API failure out of the title", () => {

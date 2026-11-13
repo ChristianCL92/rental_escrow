@@ -80,8 +80,8 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 ### Wallet Integration
 
 Uses `@solana/wallet-adapter-react` with browser-based wallets (Phantom, Solflare, etc.). The `SolanaWalletProvider` wraps the entire app.
-The cluster comes from `NEXT_PUBLIC_SOLANA_NETWORK` (default `devnet`, see `lib/solana/network.ts`), and the RPC endpoint from `NEXT_PUBLIC_SOLANA_RPC_URL` when set.
-On devnet or testnet the nav and booking card show a "Test network - no real money" badge, which disappears on `mainnet-beta`.
+The cluster is the `SOLANA_NETWORK` constant in `lib/solana/network.ts` (devnet), which the provider, explorer links and badge all read.
+Off mainnet the nav and booking card show a "Test network - no real money" badge, which disappears when that constant is `mainnet-beta`.
 
 ### Booking Flow (`components/BookingCard.tsx`)
 
