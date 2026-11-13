@@ -22,6 +22,7 @@ import {
   BookingStage,
   DatesTakenError,
   describeBookingError,
+  describeCheckedPayment,
   errorDetail,
   FriendlyError,
 } from "@/lib/booking/errors";
@@ -162,10 +163,20 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
       });
     } catch (error) {
       console.error("booking failed at stage", stage, error);
-      const friendly = describeBookingError(error, {
+      let friendly = describeBookingError(error, {
         stage,
         totalUsdc: totalPrice,
       });
+      if (friendly.paymentMayHaveLanded) {
+        try {
+          friendly = describeCheckedPayment(
+            friendly.detail,
+            await hasActiveBooking(apartmentId),
+          );
+        } catch (lookupError) {
+          console.error("could not check the escrow on chain", lookupError);
+        }
+      }
       setBookingError(friendly);
       setStep(null);
       if (bookingId && !friendly.paymentMayHaveLanded) {

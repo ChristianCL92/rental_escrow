@@ -228,20 +228,44 @@ test.describe("Booking with a wallet", () => {
     await expect(error).toBeHidden();
   });
 
-  test("a payment the network may have taken keeps the dates held", async ({
-    page,
-  }) => {
-    state.paymentSendFails = true;
+  const payWhileTheNetworkDrops = async (page: Page) => {
     await connectTestWallet(page);
     await selectTwoNights(page);
     await page.getByRole("button", { name: "Book for 60 USDC" }).click();
+    return page.getByTestId("booking-error");
+  };
 
-    const error = page.getByTestId("booking-error");
-    await expect(error).toContainText("We couldn't confirm your payment");
+  test("a payment that never reached the chain releases the dates", async ({
+    page,
+  }) => {
+    state.paymentSendFails = "not-landed";
+    const error = await payWhileTheNetworkDrops(page);
+
+    await expect(error).toContainText("Your payment didn't go through");
+    await expect(error).toContainText("No USDC was charged");
+    await expect.poll(() => state.calls).toContain("DELETE /api/bookings");
+  });
+
+  test("a payment found on chain keeps the dates held", async ({ page }) => {
+    state.paymentSendFails = "landed";
+    const error = await payWhileTheNetworkDrops(page);
+
+    await expect(error).toContainText("Your payment went through");
     await expect(
       error.getByRole("link", { name: "Go to My Bookings" }),
     ).toHaveAttribute("href", "/bookings");
     expect(state.calls).toContain("POST /api/bookings");
+    expect(state.calls).not.toContain("DELETE /api/bookings");
+  });
+
+  test("a payment that cannot be checked keeps the dates held", async ({
+    page,
+  }) => {
+    state.paymentSendFails = "lookup-fails";
+    const error = await payWhileTheNetworkDrops(page);
+
+    await expect(error).toContainText("We couldn't confirm your payment");
+    await expect(error).toContainText("Check My Bookings before trying again");
     expect(state.calls).not.toContain("DELETE /api/bookings");
   });
 

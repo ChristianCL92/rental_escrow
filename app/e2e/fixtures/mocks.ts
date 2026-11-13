@@ -25,8 +25,14 @@ export interface MockState {
   urls: string[];
   /** Signatures of transactions sent to the RPC, in order. */
   sent: string[];
-  /** The network drops while the payment (second) transaction is sent. */
-  paymentSendFails: boolean;
+  /**
+   * The network drops while the payment (second) transaction is sent. The
+   * escrow lookup that follows then finds no escrow ("not-landed"), finds
+   * it ("landed") or fails ("lookup-fails").
+   */
+  paymentSendFails: false | "not-landed" | "landed" | "lookup-fails";
+  /** Set once the payment send has been dropped. */
+  paymentSendAborted: boolean;
 }
 
 export const createMockState = (
@@ -42,6 +48,7 @@ export const createMockState = (
   urls: [],
   sent: [],
   paymentSendFails: false,
+  paymentSendAborted: false,
   ...overrides,
 });
 
@@ -108,9 +115,19 @@ const rpcResult = (state: MockState, call: RpcCall): unknown => {
   const context = { slot: 100 };
   switch (call.method) {
     case "getAccountInfo":
+      if (
+        state.paymentSendAborted &&
+        state.paymentSendFails === "lookup-fails"
+      ) {
+        throw new Error("RPC unavailable");
+      }
       return {
         context,
-        value: state.existingEscrow
+        value: (
+          state.paymentSendAborted
+            ? state.paymentSendFails === "landed"
+            : state.existingEscrow
+        )
           ? {
               data: ["", "base64"],
               executable: false,
@@ -163,6 +180,7 @@ export const mockSolanaRpc = async (page: Page, state: MockState) => {
       methods.includes("sendTransaction")
     ) {
       state.calls.push("rpc:sendTransaction");
+      state.paymentSendAborted = true;
       await route.abort("internetdisconnected");
       return;
     }
