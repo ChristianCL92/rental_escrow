@@ -19,8 +19,8 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
     <Card className="overflow-hidden transition-shadow hover:shadow-lg">
       <div className="relative h-48 w-full">
         <Image
-          src={property.images[0]}
-          alt={property.name}
+          src={property.images[0].src}
+          alt={property.images[0].alt}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -38,7 +38,7 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-lg font-semibold">{property.name}</h3>
+            <h2 className="text-lg font-semibold">{property.name}</h2>
             <p className="text-sm text-muted-foreground">
               Up to {property.maxGuests} guests
             </p>
@@ -75,14 +75,15 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
       </CardContent>
 
       <CardFooter>
-        <Link href={`/properties/${property.id}`} className="w-full">
-          <Button
-            className="w-full cursor-pointer"
-            disabled={!property.available}
-          >
-            {property.available ? "View & Book" : "Not Available"}
+        {property.available ? (
+          <Button asChild className="w-full">
+            <Link href={`/properties/${property.id}`}>View & Book</Link>
           </Button>
-        </Link>
+        ) : (
+          <Button className="w-full" disabled>
+            Not Available
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

@@ -49,18 +49,13 @@ export const GuestPage = () => {
 
   if (!connected) {
     return (
-      <main className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 py-16">
         <div>
-          <Link href={"/"}>
-            <Button
-              className="cursor-pointer"
-              variant="outline"
-              size="sm"
-              aria-label="Back to properties"
-            >
-              <IoMdArrowBack />
-            </Button>
-          </Link>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/" aria-label="Back to properties">
+              <IoMdArrowBack aria-hidden="true" />
+            </Link>
+          </Button>
         </div>
         <div className="mx-auto max-w-md text-center">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
@@ -74,7 +69,7 @@ export const GuestPage = () => {
             <WalletMultiButton />
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -87,12 +82,10 @@ export const GuestPage = () => {
   }
 
   return (
-    <main className="container mx-auto p-6">
+    <div className="container mx-auto p-6">
       <div className="mt-2 flex justify-between">
         <div>
-          <div>
-            <p className="font-bold text-lg">Booking history</p>
-          </div>
+          <h1 className="font-bold text-lg">Booking history</h1>
           {bookings.length === 1 ? (
             <p className="font-bold text-lg text-muted-foreground">
               {bookings.length} booking
@@ -114,9 +107,9 @@ export const GuestPage = () => {
             </Button>
           </div>
           <div>
-            <Link href={"/"}>
-              <Button className="cursor-pointer">Back to properties</Button>
-            </Link>
+            <Button asChild>
+              <Link href="/">Back to properties</Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -162,7 +155,7 @@ export const GuestPage = () => {
           );
         })}
       </div>
-    </main>
+    </div>
   );
 };
 
