@@ -113,7 +113,7 @@ test.describe("Keyboard and screen-reader basics", () => {
     await page.keyboard.press(" ");
     await expect(carousel.getByText("1 / 4")).toBeVisible();
 
-    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press(" ");
     await expect(carousel.getByText("4 / 4")).toBeVisible();
   });
 

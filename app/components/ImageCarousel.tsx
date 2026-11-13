@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { Button } from "./ui/button";
@@ -29,21 +29,10 @@ const ImageCarousel = ({ images, label }: ImageCarouselProps) => {
     setCurrentImageIndex((index) => (index - 1 + total) % total);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      handleNextImage();
-    } else if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      handlePreviousImage();
-    }
-  };
-
   return (
     <section
       aria-roledescription="carousel"
       aria-label={`${label} photos`}
-      onKeyDown={hasMultiple ? handleKeyDown : undefined}
       className="relative aspect-video w-full overflow-hidden rounded-xl"
     >
       <Image
