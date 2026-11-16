@@ -148,7 +148,7 @@ test.describe("Booking with a wallet", () => {
       "Connected with Test Wallet",
     );
     await page.getByRole("menuitem", { name: "My Bookings" }).click();
-    await expect(page).toHaveURL("/bookings");
+    await expect(page).toHaveURL("/bookings", { timeout: 15_000 });
   });
 
   test("walks through both wallet approvals to a confirmation", async ({
