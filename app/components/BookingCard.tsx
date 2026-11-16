@@ -15,18 +15,19 @@ import {
   startOfDay,
 } from "date-fns";
 import { CalendarX2, Loader2, Wallet } from "lucide-react";
-import useRentalProgram from "@/hooks/useRentalProgram";
+import useRentalProgram, { SignedPayment } from "@/hooks/useRentalProgram";
 import useBookingAPI from "@/hooks/useBookingAPI";
 import {
   ActiveBookingError,
   BookingStage,
   DatesTakenError,
   describeBookingError,
-  describeCheckedPayment,
+  describeExpiredPayment,
   errorDetail,
   FriendlyError,
 } from "@/lib/booking/errors";
 import { escrowCheckInTime, formatDeadline } from "@/lib/booking/escrow";
+import { PaymentOutcome } from "@/lib/booking/settle";
 import NetworkBadge from "./NetworkBadge";
 import PaymentExplainer from "./booking/PaymentExplainer";
 import BookingProgress, {
@@ -64,6 +65,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
     USDC_MINT,
     createEscrowTokenAccount,
     hasActiveBooking,
+    settleSignedPayment,
   } = useRentalProgram();
   const {
     checkDatesAvailable,
@@ -125,6 +127,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
     let stage: BookingStage = "reserving";
     let bookingId: string | null = null;
     let txSignature: string | null = null;
+    let signedPayment: SignedPayment | null = null;
     setStep("reserving");
 
     try {
@@ -160,6 +163,9 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         checkInDate: checkIn,
         ownerAddress: OWNER_ADDRESS,
         usdcMint: USDC_MINT,
+        onSigned: (payment) => {
+          signedPayment = payment;
+        },
       });
     } catch (error) {
       console.error("booking failed at stage", stage, error);
@@ -167,29 +173,37 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         stage,
         totalUsdc: totalPrice,
       });
+      const payment = signedPayment as SignedPayment | null;
       if (friendly.paymentMayHaveLanded) {
-        try {
-          friendly = describeCheckedPayment(
-            friendly.detail,
-            await hasActiveBooking(apartmentId),
-          );
-        } catch (lookupError) {
-          console.error("could not check the escrow on chain", lookupError);
+        let outcome: PaymentOutcome = "expired";
+        if (payment) {
+          setStep("confirming");
+          outcome = await settleSignedPayment(apartmentId, payment);
+        }
+        if (outcome === "landed") {
+          txSignature = payment!.signature;
+        } else if (outcome === "expired") {
+          friendly = describeExpiredPayment(friendly.detail);
         }
       }
-      setBookingError(friendly);
-      setStep(null);
-      if (bookingId && !friendly.paymentMayHaveLanded) {
-        try {
-          await rollbackBooking(bookingId);
-        } catch (rollbackError) {
-          console.error("failed to release the pending booking", rollbackError);
+      if (!txSignature) {
+        setBookingError(friendly);
+        setStep(null);
+        if (bookingId && !friendly.paymentMayHaveLanded) {
+          try {
+            await rollbackBooking(bookingId);
+          } catch (rollbackError) {
+            console.error(
+              "failed to release the pending booking",
+              rollbackError,
+            );
+          }
         }
+        if (friendly.action === "pick-dates") {
+          void refreshBookedDates();
+        }
+        return;
       }
-      if (friendly.action === "pick-dates") {
-        void refreshBookedDates();
-      }
-      return;
     }
     if (!txSignature) return;
 

@@ -26,13 +26,17 @@ export interface MockState {
   /** Signatures of transactions sent to the RPC, in order. */
   sent: string[];
   /**
-   * The network drops while the payment (second) transaction is sent. The
-   * escrow lookup that follows then finds no escrow ("not-landed"), finds
-   * it ("landed") or fails ("lookup-fails").
+   * The network drops while the payment (second) transaction is sent. While
+   * the app then waits for the payment, the escrow appears on the second
+   * check ("lands-late"), the chain passes the payment's last valid block
+   * height with no escrow ("never-lands"), or every check fails
+   * ("checks-fail").
    */
-  paymentSendFails: false | "not-landed" | "landed" | "lookup-fails";
+  paymentSendFails: false | "lands-late" | "never-lands" | "checks-fail";
   /** Set once the payment send has been dropped. */
   paymentSendAborted: boolean;
+  /** Block height checks made after the payment send was dropped. */
+  settleChecks: number;
 }
 
 export const createMockState = (
@@ -49,6 +53,7 @@ export const createMockState = (
   sent: [],
   paymentSendFails: false,
   paymentSendAborted: false,
+  settleChecks: 0,
   ...overrides,
 });
 
@@ -70,6 +75,9 @@ const toBase58 = (bytes: Uint8Array): string => {
 /** The first signature of a base64 wire transaction, base58-encoded. */
 const firstSignature = (base64Tx: string): string =>
   toBase58(Buffer.from(base64Tx, "base64").subarray(1, 65));
+
+/** lastValidBlockHeight of the mocked blockhash. */
+const LAST_VALID_BLOCK_HEIGHT = 1_000;
 
 /** Upcoming checkIn for the mocked escrow: two months ahead, UTC midnight. */
 export const ESCROW_CHECK_IN = (() => {
@@ -117,7 +125,7 @@ const rpcResult = (state: MockState, call: RpcCall): unknown => {
     case "getAccountInfo":
       if (
         state.paymentSendAborted &&
-        state.paymentSendFails === "lookup-fails"
+        state.paymentSendFails === "checks-fail"
       ) {
         throw new Error("RPC unavailable");
       }
@@ -125,7 +133,7 @@ const rpcResult = (state: MockState, call: RpcCall): unknown => {
         context,
         value: (
           state.paymentSendAborted
-            ? state.paymentSendFails === "landed"
+            ? state.paymentSendFails === "lands-late" && state.settleChecks >= 2
             : state.existingEscrow
         )
           ? {
@@ -143,11 +151,18 @@ const rpcResult = (state: MockState, call: RpcCall): unknown => {
         context,
         value: {
           blockhash: "11111111111111111111111111111111",
-          lastValidBlockHeight: 1_000,
+          lastValidBlockHeight: LAST_VALID_BLOCK_HEIGHT,
         },
       };
     case "getBlockHeight":
-      return 10;
+      if (!state.paymentSendAborted) return 10;
+      if (state.paymentSendFails === "checks-fail") {
+        throw new Error("RPC unavailable");
+      }
+      state.settleChecks += 1;
+      return state.paymentSendFails === "never-lands" && state.settleChecks >= 2
+        ? LAST_VALID_BLOCK_HEIGHT + 1
+        : LAST_VALID_BLOCK_HEIGHT - 10;
     case "getProgramAccounts":
       return state.escrowGuest ? [escrowAccount(state.escrowGuest)] : [];
     case "sendTransaction": {
@@ -179,6 +194,10 @@ export const mockSolanaRpc = async (page: Page, state: MockState) => {
       state.sent.length >= 1 &&
       methods.includes("sendTransaction")
     ) {
+      const call = (Array.isArray(body) ? body : [body]).find(
+        (c) => c.method === "sendTransaction",
+      )!;
+      state.sent.push(firstSignature(String(call.params?.[0] ?? "")));
       state.calls.push("rpc:sendTransaction");
       state.paymentSendAborted = true;
       await route.abort("internetdisconnected");

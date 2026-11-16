@@ -26,8 +26,8 @@ export interface FriendlyError {
   detail: string;
   action?: ErrorAction;
   /**
-   * The payment may have reached the chain: check for the escrow before
-   * releasing the dates the pending booking holds.
+   * The payment may have reached the chain: wait for the escrow or for the
+   * payment to expire before releasing the dates the pending booking holds.
    */
   paymentMayHaveLanded?: boolean;
 }
@@ -295,29 +295,16 @@ export const describeBookingError = (
 };
 
 /**
- * Settles a payment that failed without a clear answer, once the chain has
- * been checked for this guest's escrow. The escrow did not exist before the
- * payment, so finding it means the payment went through.
+ * A payment that failed without a clear answer, once the chain shows it can
+ * no longer land: it was never signed, or its blockhash expired with no
+ * escrow created.
  */
-export const describeCheckedPayment = (
-  detail: string,
-  escrowExists: boolean,
-): FriendlyError =>
-  escrowExists
-    ? {
-        title: "Your payment went through",
-        message:
-          "The network was slow to confirm it, but your USDC is in escrow and the booking is in My Bookings. Don't pay again.",
-        detail,
-        action: "my-bookings",
-        paymentMayHaveLanded: true,
-      }
-    : {
-        title: "Your payment didn't go through",
-        message:
-          "No USDC was charged and your dates are released - you can try again.",
-        detail,
-      };
+export const describeExpiredPayment = (detail: string): FriendlyError => ({
+  title: "Your payment didn't go through",
+  message:
+    "No USDC was charged and your dates are released - you can try again.",
+  detail,
+});
 
 /** Plain-language errors for cancelling a booking on My Bookings. */
 export const describeCancelError = (error: unknown): FriendlyError => {

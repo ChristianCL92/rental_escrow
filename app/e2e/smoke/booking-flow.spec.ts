@@ -232,41 +232,63 @@ test.describe("Booking with a wallet", () => {
     await connectTestWallet(page);
     await selectTwoNights(page);
     await page.getByRole("button", { name: "Book for 60 USDC" }).click();
-    return page.getByTestId("booking-error");
   };
 
-  test("a payment that never reached the chain releases the dates", async ({
-    page,
-  }) => {
-    state.paymentSendFails = "not-landed";
-    const error = await payWhileTheNetworkDrops(page);
+  test("a payment that lands late ends in a confirmation", async ({ page }) => {
+    state.paymentSendFails = "lands-late";
+    await payWhileTheNetworkDrops(page);
 
-    await expect(error).toContainText("Your payment didn't go through");
-    await expect(error).toContainText("No USDC was charged");
-    await expect.poll(() => state.calls).toContain("DELETE /api/bookings");
+    await expect(page.getByTestId("booking-progress")).toContainText(
+      "Confirming your payment...",
+    );
+    const confirmation = page.getByTestId("booking-confirmation");
+    await expect(confirmation).toContainText("Booking confirmed", {
+      timeout: 15_000,
+    });
+    await expect(
+      confirmation.getByRole("link", { name: /View transaction/ }),
+    ).toHaveAttribute(
+      "href",
+      `https://explorer.solana.com/tx/${state.sent[1]}?cluster=devnet`,
+    );
+    await expect(page.getByTestId("booking-error")).toHaveCount(0);
+    expect(state.settleChecks).toBeGreaterThanOrEqual(2);
+    expect(state.calls).toContain("PATCH /api/bookings");
+    expect(state.calls).not.toContain("DELETE /api/bookings");
   });
 
-  test("a payment found on chain keeps the dates held", async ({ page }) => {
-    state.paymentSendFails = "landed";
-    const error = await payWhileTheNetworkDrops(page);
+  test("a payment that expires without landing releases the dates", async ({
+    page,
+  }) => {
+    state.paymentSendFails = "never-lands";
+    await payWhileTheNetworkDrops(page);
 
-    await expect(error).toContainText("Your payment went through");
-    await expect(
-      error.getByRole("link", { name: "Go to My Bookings" }),
-    ).toHaveAttribute("href", "/bookings");
-    expect(state.calls).toContain("POST /api/bookings");
-    expect(state.calls).not.toContain("DELETE /api/bookings");
+    await expect(page.getByTestId("booking-progress")).toContainText(
+      "Confirming your payment...",
+    );
+    const error = page.getByTestId("booking-error");
+    await expect(error).toContainText("Your payment didn't go through", {
+      timeout: 15_000,
+    });
+    await expect(error).toContainText("No USDC was charged");
+    expect(state.settleChecks).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => state.calls).toContain("DELETE /api/bookings");
+    expect(state.calls).not.toContain("PATCH /api/bookings");
   });
 
   test("a payment that cannot be checked keeps the dates held", async ({
     page,
   }) => {
-    state.paymentSendFails = "lookup-fails";
-    const error = await payWhileTheNetworkDrops(page);
+    state.paymentSendFails = "checks-fail";
+    await payWhileTheNetworkDrops(page);
 
-    await expect(error).toContainText("We couldn't confirm your payment");
+    const error = page.getByTestId("booking-error");
+    await expect(error).toContainText("We couldn't confirm your payment", {
+      timeout: 20_000,
+    });
     await expect(error).toContainText("Check My Bookings before trying again");
     expect(state.calls).not.toContain("DELETE /api/bookings");
+    expect(state.calls).not.toContain("PATCH /api/bookings");
   });
 
   test("taken dates are explained in plain words", async ({ page }) => {

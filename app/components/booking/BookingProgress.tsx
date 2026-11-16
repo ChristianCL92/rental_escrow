@@ -1,9 +1,14 @@
 import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ProgressStep = "reserving" | "account" | "payment" | "confirmed";
+export type ProgressStep =
+  | "reserving"
+  | "account"
+  | "payment"
+  | "confirming"
+  | "confirmed";
 
-const STEPS: { id: ProgressStep; label: string }[] = [
+const STEPS: { id: Exclude<ProgressStep, "confirming">; label: string }[] = [
   { id: "reserving", label: "Reserving dates" },
   { id: "account", label: "Approve in wallet (1 of 2)" },
   { id: "payment", label: "Approve payment (2 of 2)" },
@@ -18,6 +23,8 @@ export const stepHint = (step: ProgressStep, totalUsdc: number): string => {
       return "Your wallet asks you to approve a setup step. It creates the escrow account for this stay and uses a little SOL - no USDC moves yet.";
     case "payment":
       return `Your wallet asks a second time. This approval moves ${totalUsdc} USDC into escrow. It is the only payment, not a double charge.`;
+    case "confirming":
+      return "Confirming your payment... The network is slow to confirm it. This can take a minute or two, and there is nothing else you need to do.";
     case "confirmed":
       return "Booking confirmed.";
   }
@@ -32,6 +39,8 @@ export const stepAnnouncement = (step: ProgressStep): string => {
       return "Approve in your wallet, step 1 of 2.";
     case "payment":
       return "Approve the payment in your wallet, step 2 of 2.";
+    case "confirming":
+      return "Confirming your payment.";
     case "confirmed":
       return "Booking confirmed.";
   }
@@ -48,7 +57,9 @@ interface BookingProgressProps {
  * charge.
  */
 const BookingProgress = ({ step, totalUsdc }: BookingProgressProps) => {
-  const current = STEPS.findIndex((s) => s.id === step);
+  const current = STEPS.findIndex(
+    (s) => s.id === (step === "confirming" ? "confirmed" : step),
+  );
 
   return (
     <div className="mt-4 rounded-lg border p-4" data-testid="booking-progress">

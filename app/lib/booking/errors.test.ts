@@ -5,7 +5,7 @@ import {
   DatesTakenError,
   describeBookingError,
   describeCancelError,
-  describeCheckedPayment,
+  describeExpiredPayment,
   errorDetail,
 } from "./errors";
 
@@ -193,20 +193,13 @@ describe("describeBookingError", () => {
   });
 });
 
-describe("describeCheckedPayment", () => {
-  it("keeps the dates and says the payment went through when the escrow exists", () => {
-    const result = describeCheckedPayment("timed out", true);
-    expect(result.title).toBe("Your payment went through");
-    expect(result.action).toBe("my-bookings");
-    expect(result.paymentMayHaveLanded).toBe(true);
-    expect(result.detail).toBe("timed out");
-  });
-
-  it("releases the dates and says no USDC moved when there is no escrow", () => {
-    const result = describeCheckedPayment("Failed to fetch", false);
+describe("describeExpiredPayment", () => {
+  it("releases the dates and says no USDC moved", () => {
+    const result = describeExpiredPayment("Failed to fetch");
     expect(result.title).toBe("Your payment didn't go through");
     expect(result.message).toContain("No USDC was charged");
     expect(result.paymentMayHaveLanded).toBeFalsy();
+    expect(result.detail).toBe("Failed to fetch");
   });
 });
 
