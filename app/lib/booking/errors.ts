@@ -14,7 +14,11 @@
 export type BookingStage = "reserving" | "account" | "payment";
 
 export type ErrorAction =
-  "pick-dates" | "my-bookings" | "get-sol" | "get-usdc" | "reconnect";
+  | "pick-dates"
+  | "my-bookings"
+  | "get-sol"
+  | "get-usdc"
+  | "reconnect";
 
 export interface FriendlyError {
   title: string;

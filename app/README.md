@@ -229,8 +229,10 @@ bun run test:e2e    # Playwright (requires: npx playwright install)
 
 `test:unit` is scoped to `lib` on purpose — unscoped, Bun's runner would also
 collect the Playwright specs under `e2e/` and choke on their imports. It
-currently covers the marketing output contract in `lib/marketing/schema.ts`
-(hashtag counting, the Spanish heuristic, fence stripping, channel selection).
+covers the marketing output contract in `lib/marketing/schema.ts` (hashtag
+counting, the Spanish heuristic, fence stripping, channel selection), the
+booking error mapping and escrow wording in `lib/booking/`, and the network
+constants in `lib/solana/network.ts`.
 
 `*.test.ts` is excluded in `tsconfig.json`, since `next build` typechecks and
 would otherwise fail on the `bun:test` import. Adding `@types/bun` would let
