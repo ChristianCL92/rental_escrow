@@ -135,7 +135,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
   };
 
   return (
-    <div className="rounded-md border bg-white p-6 shadow-lg">
+    <div className="rounded-md border bg-white p-4 shadow-lg sm:p-6">
       <h2 className="text-xl font-semibold">Book your stay</h2>
       <p className="mt-2 text-muted-foreground">
         <span className="text-lg font-bold text-foreground">

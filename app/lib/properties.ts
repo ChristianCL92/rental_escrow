@@ -29,7 +29,12 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
-    images: ["/images/apt001.jpeg"],
+    images: [
+      {
+        src: "/images/apt001.jpeg",
+        alt: "Bedroom with a double bed, cream curtains and a wall of windows looking out over the green mountainside",
+      },
+    ],
     available: true,
   },
   {
@@ -48,7 +53,12 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
-    images: ["/images/apt002.jpeg"],
+    images: [
+      {
+        src: "/images/apt002.jpeg",
+        alt: "Bedroom with a double bed, green curtains and an open blue door onto a balcony with a valley view",
+      },
+    ],
     available: true,
   },
   {
@@ -67,7 +77,12 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
-    images: ["/images/apt003.jpeg"],
+    images: [
+      {
+        src: "/images/apt003.jpeg",
+        alt: "Bedroom with a double bed, green curtains and a blue door opening onto a balcony facing the hills",
+      },
+    ],
     available: true,
   },
   {
@@ -86,7 +101,12 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
-    images: ["/images/apt004.jpeg"],
+    images: [
+      {
+        src: "/images/apt004.jpeg",
+        alt: "Bedroom with a double bed and cream curtains on two walls of windows overlooking the property",
+      },
+    ],
     available: true,
   },
 
@@ -108,10 +128,22 @@ export const properties: Property[] = [
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 4,
     images: [
-      "/images/apt005.1.jpeg",
-      "/images/apt005.2.jpeg",
-      "/images/apt005.3.jpeg",
-      "/images/apt005.cama.jpeg",
+      {
+        src: "/images/apt005.1.jpeg",
+        alt: "Living area with a breakfast bar and stools, a sky mural on the domed ceiling and colourful mosaic walls",
+      },
+      {
+        src: "/images/apt005.2.jpeg",
+        alt: "Living room with a sofa bed and an arched iron gate opening onto the green hills",
+      },
+      {
+        src: "/images/apt005.3.jpeg",
+        alt: "Kitchen with a gas hob and counter under a painted sky ceiling, with the garden visible through the arch",
+      },
+      {
+        src: "/images/apt005.cama.jpeg",
+        alt: "Bedroom with a round double bed in a cave-like room lit with soft green light",
+      },
     ],
     available: true,
   },

@@ -3,10 +3,10 @@ import { properties, SHARED_AMENITIES } from "@/lib/properties";
 
 export default function Home() {
   return (
-    <main className="container mx-auto px-4 py-8">
-      <h2 className="text-xl font-bold text-center mb-10 text-muted-foreground">
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-xl font-bold text-center mb-10 text-muted-foreground">
         Disconnect from the routine, reconnect with nature.
-      </h2>
+      </h1>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {properties.map((property) => (
           <PropertyCard key={property.id} property={property} />
@@ -27,6 +27,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-    </main>
+    </div>
   );
 }

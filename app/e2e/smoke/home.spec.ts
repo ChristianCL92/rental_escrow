@@ -12,8 +12,9 @@ test.describe("Home page", () => {
     await page.goto("/");
   });
 
-  test("page loads with heading", async ({ page }) => {
-    await expect(page.locator("h1")).toContainText("El Solar");
+  test("page loads with a single main heading", async ({ page }) => {
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(page.locator("h1")).toContainText("reconnect with nature");
   });
 
   test("all 5 property cards rendered", async ({ page }) => {

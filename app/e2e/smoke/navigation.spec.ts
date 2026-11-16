@@ -18,7 +18,7 @@ test.describe("Navigation", () => {
     // Logo image and nav should be visible
     await expect(page.locator("nav")).toBeVisible();
     await expect(
-      page.locator('img[alt="El Solar Logo"]'),
+      page.getByRole("navigation").getByRole("link", { name: "El Solar" }),
     ).toBeVisible();
   });
 
@@ -32,15 +32,16 @@ test.describe("Navigation", () => {
   test("navigate back to home via logo", async ({ page }) => {
     await page.goto("/bookings");
 
-    await page.locator('img[alt="El Solar Logo"]').click();
+    await page
+      .getByRole("navigation")
+      .getByRole("link", { name: "El Solar" })
+      .click();
     await expect(page).toHaveURL("/");
   });
 
   test("wallet connect button present", async ({ page }) => {
     await page.goto("/");
 
-    await expect(
-      page.locator(".wallet-adapter-button"),
-    ).toBeVisible();
+    await expect(page.locator(".wallet-adapter-button")).toBeVisible();
   });
 });

@@ -207,7 +207,7 @@ const MarketingPage = () => {
     !mutation.isPending && !mutation.isError && results.length === 0;
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-10">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">
           Marketing copy
@@ -443,7 +443,7 @@ const MarketingPage = () => {
           })}
         </div>
       )}
-    </main>
+    </div>
   );
 };
 

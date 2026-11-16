@@ -124,3 +124,13 @@
 .wallet-adapter-button {
   white-space: nowrap;
 }
+
+/*
+ * The global focus outline (ring at 50%) is nearly invisible on the dark nav
+ * and footer, so controls there get a solid light outline instead.
+ * Unlayered on purpose so it also overrides the wallet adapter's own styles.
+ */
+.focus-ring-on-dark :focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}

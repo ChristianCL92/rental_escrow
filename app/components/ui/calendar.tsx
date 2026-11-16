@@ -30,6 +30,9 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn(
         "bg-background group/calendar p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
+        // Phones: 44px day targets, shrinking only when the screen is too
+        // narrow to fit seven of them (100cqw is the calendar's own width).
+        "max-sm:@container max-sm:w-full max-sm:p-1 max-sm:[--cell-size:min(--spacing(11),calc(100cqw/7))]",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className,
@@ -41,7 +44,7 @@ function Calendar({
         ...formatters,
       }}
       classNames={{
-        root: cn("w-fit", defaultClassNames.root),
+        root: cn("w-fit max-sm:w-full", defaultClassNames.root),
         months: cn(
           "flex gap-4 flex-col md:flex-row relative",
           defaultClassNames.months,
