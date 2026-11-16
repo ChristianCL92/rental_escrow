@@ -70,8 +70,10 @@ test.describe("GET /api/bookings/booked-dates", () => {
 
     await page.goto("/properties/room-001");
 
-    const banner = page.locator(".bg-yellow-200");
+    const banner = page.getByTestId("booked-dates-warning");
     await expect(banner).toBeVisible({ timeout: 10000 });
-    await expect(banner).toContainText("DB query failed");
+    await expect(banner).toContainText("Some taken nights may not be shown");
+    // The raw API message is only behind "Details".
+    await expect(banner.getByText("DB query failed")).toBeHidden();
   });
 });

@@ -12,23 +12,29 @@ import {
   Receipt,
 } from "lucide-react";
 import { EscrowInfo } from "@/hooks/useRentalProgram";
+import { bookingPhase, checkInCalendarDate } from "@/lib/booking/escrow";
+import { describeCancelError } from "@/lib/booking/errors";
+import { explorerUrl } from "@/lib/solana/network";
+import BookingErrorAlert from "./booking/BookingErrorAlert";
 
 interface BookingProps {
   booking: EscrowInfo;
+  now: number;
 }
 
 interface GuestBookingProps extends BookingProps {
   onCancel: (apartmentId: number, checkInDate: Date) => void;
   isCanceling: boolean;
   cancelingId: number | null;
+  /** Only set on the card whose cancellation failed. */
   cancelError: Error | null;
   cancelReset: () => void;
 }
 
-const StatusBadge = ({ booking }: BookingProps) => {
-  const now = Date.now();
+const StatusBadge = ({ booking, now }: BookingProps) => {
+  const phase = bookingPhase(booking, now);
 
-  if (booking.rentEnded) {
+  if (phase === "completed") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
         <CheckCircle className="h-3 w-3" />
@@ -37,7 +43,7 @@ const StatusBadge = ({ booking }: BookingProps) => {
     );
   }
 
-  if (booking.checkInDate.getTime() <= now) {
+  if (phase === "active") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
         <Clock className="h-3 w-3" />
@@ -56,6 +62,7 @@ const StatusBadge = ({ booking }: BookingProps) => {
 
 const GuestBookingCard = ({
   booking,
+  now,
   onCancel,
   isCanceling,
   cancelingId,
@@ -64,20 +71,21 @@ const GuestBookingCard = ({
 }: GuestBookingProps) => {
   const pricePerNight = getPriceByApartmentId(booking.apartmentId);
   const nights = booking.amount / pricePerNight;
-  const checkOutDate = addDays(booking.checkInDate, nights);
+  const checkInDay = checkInCalendarDate(booking.checkInDate);
+  const checkOutDate = addDays(checkInDay, nights);
   const isThisOneCanceling = isCanceling && cancelingId === booking.apartmentId;
-  const canCancel = booking.checkInDate.getTime() > Date.now();
+  const canCancel = bookingPhase(booking, now) === "upcoming";
 
   return (
     <div className="rounded-lg border p-4 transition-shadow hover:shadow-lg">
       <div className="flex justify-between items-start mb-3">
         <p className="font-semibold">Apartment #{booking.apartmentId}</p>
-        <StatusBadge booking={booking} />
+        <StatusBadge booking={booking} now={now} />
       </div>
       <div className="space-y-1 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4" />
-          <span>Check-in: {format(booking.checkInDate, "MMM d, yyyy")}</span>
+          <span>Check-in: {format(checkInDay, "MMM d, yyyy")}</span>
         </div>
         <div className="flex items-center gap-2">
           <CalendarCheck className="h-4 w-4" />
@@ -89,21 +97,23 @@ const GuestBookingCard = ({
             {nights} night{nights > 1 ? "s" : ""}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <Receipt className="h-4 w-4" />
-          <a
-            href={`https://explorer.solana.com/tx/${booking?.txSignature}?cluster=devnet`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View Transaction
-          </a>
-        </div>
+        {booking.txSignature && (
+          <div className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            <a
+              href={explorerUrl("tx", booking.txSignature)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View Transaction
+            </a>
+          </div>
+        )}
         {canCancel && (
           <div className="flex items-center gap-2">
             <Delete className="h-4 w-4" />
             <button
-              onClick={() => onCancel(booking.apartmentId, booking.checkInDate)}
+              onClick={() => onCancel(booking.apartmentId, checkInDay)}
               disabled={isThisOneCanceling}
               className="p-2 border rounded-lg text-sm font-bold hover:bg-red-100 
                  text-red-600 disabled:opacity-50 cursor-pointer"
@@ -114,14 +124,11 @@ const GuestBookingCard = ({
         )}
 
         {cancelError && (
-          <div className="mt-4 p-4 bg-red-100 border border-red-400 rounded-lg">
-            <button className="float-right" onClick={cancelReset}>
-              X
-            </button>
-            <p className="text-red-600 text-sm mt-2">
-              Failed to cancel: {cancelError.message}
-            </p>
-          </div>
+          <BookingErrorAlert
+            className="mt-4"
+            error={describeCancelError(cancelError)}
+            onDismiss={cancelReset}
+          />
         )}
       </div>
       <div className="mt-3 pt-3 border-t flex justify-between items-center">

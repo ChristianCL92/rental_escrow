@@ -6,7 +6,12 @@ test.describe("Guest Bookings Page", () => {
   }) => {
     await page.goto("/bookings");
 
-    await expect(page.getByText(/connect.*wallet|no wallet/i)).toBeVisible();
+    await expect(
+      page.getByText("Connect your wallet to view your booking history"),
+    ).toBeVisible();
+    await expect(
+      page.locator("main").getByRole("button", { name: "Connect wallet" }),
+    ).toBeEnabled();
   });
 
   test("has navigation back to properties", async ({ page }) => {

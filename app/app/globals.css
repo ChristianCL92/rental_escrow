@@ -121,8 +121,155 @@
   }
 }
 
-.wallet-adapter-button {
+/*
+ * Wallet adapter UI (the wallet picker modal, and the adapter's own button
+ * where it is still used) in the site's tokens instead of the library's
+ * violet, dark modal and DM Sans. The library's stylesheet loads after this
+ * one, so the overrides are scoped under `body` to win on specificity.
+ */
+body .wallet-adapter-button {
   white-space: nowrap;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  height: 2.25rem;
+  line-height: 1;
+  padding: 0 1rem;
+  border-radius: var(--radius-md);
+  color: var(--primary);
+}
+
+body .wallet-adapter-button-trigger {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+body .wallet-adapter-button:not([disabled]):hover {
+  background-color: var(--accent);
+}
+
+body .wallet-adapter-button:not([disabled]):focus-visible,
+body .wallet-adapter-modal-button-close:focus-visible,
+body .wallet-adapter-modal-list-more:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+body .wallet-adapter-button-start-icon,
+body .wallet-adapter-button-start-icon img {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+body .wallet-adapter-button-start-icon {
+  margin-right: 0.5rem;
+}
+
+body .wallet-adapter-dropdown-list {
+  background: var(--popover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgb(15 23 42 / 0.12);
+  font-family: var(--font-sans);
+  padding: 0.25rem;
+  grid-row-gap: 0;
+}
+
+body .wallet-adapter-dropdown-list-item {
+  color: var(--popover-foreground);
+  font-weight: 500;
+  justify-content: flex-start;
+  padding: 0 0.75rem;
+  border-radius: calc(var(--radius) - 4px);
+}
+
+body .wallet-adapter-dropdown-list-item:not([disabled]):hover {
+  background-color: var(--accent);
+}
+
+body .wallet-adapter-modal-overlay {
+  background: rgb(15 23 42 / 0.6);
+}
+
+body .wallet-adapter-modal-wrapper {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  font-family: var(--font-sans);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 48px rgb(15 23 42 / 0.2);
+}
+
+body .wallet-adapter-modal-title {
+  color: var(--foreground);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 3.5rem 2rem 1.5rem;
+}
+
+body .wallet-adapter-modal-button-close {
+  background: var(--secondary);
+  top: 1rem;
+  right: 1rem;
+  padding: 0.625rem;
+}
+
+body .wallet-adapter-modal-button-close svg {
+  fill: var(--muted-foreground);
+}
+
+body .wallet-adapter-modal-button-close:hover svg {
+  fill: var(--foreground);
+}
+
+body .wallet-adapter-modal-list {
+  padding: 0 0.75rem;
+}
+
+body .wallet-adapter-modal-list .wallet-adapter-button {
+  background: transparent;
+  color: var(--foreground);
+  font-size: 1rem;
+  font-weight: 500;
+  height: 3.25rem;
+  padding: 0 0.75rem;
+  border-radius: var(--radius-md);
+}
+
+body .wallet-adapter-modal-list .wallet-adapter-button:not([disabled]):hover {
+  background-color: var(--accent);
+}
+
+body .wallet-adapter-modal-list .wallet-adapter-button span {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+body .wallet-adapter-modal-list-more {
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+body .wallet-adapter-modal-list-more svg,
+body .wallet-adapter-modal-collapse-button svg {
+  fill: var(--muted-foreground);
+}
+
+body .wallet-adapter-modal-middle-button {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+}
+
+/* The "no wallet" illustration is a violet gradient; keep it neutral. */
+body .wallet-adapter-modal-middle svg {
+  filter: grayscale(1);
 }
 
 /*

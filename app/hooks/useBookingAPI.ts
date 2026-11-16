@@ -1,6 +1,7 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useCallback, useState } from "react";
 import { format } from "date-fns";
+import { ApiError } from "@/lib/booking/errors";
 
 interface AvailabilityParams {
   apartmentId: number;
@@ -10,6 +11,25 @@ interface AvailabilityParams {
 
 const formatDate = (date: Date): string => {
   return format(date, "yyyy-MM-dd");
+};
+
+/**
+ * Builds an ApiError from a failed response. The routes answer with
+ * `{ error }` (and the rate limiter with `{ text }`); the body may also not be
+ * JSON at all when a proxy or the dev server fails first.
+ */
+const apiError = async (
+  response: Response,
+  fallback: string,
+): Promise<ApiError> => {
+  let message = fallback;
+  try {
+    const body = await response.json();
+    message = body?.error || body?.message || body?.text || fallback;
+  } catch {
+    // keep the fallback
+  }
+  return new ApiError(message, response.status);
 };
 
 const useBookingAPI = () => {
@@ -29,8 +49,7 @@ const useBookingAPI = () => {
       const respons = await fetch(`/api/bookings/booked-dates?${params}`);
 
       if (!respons.ok) {
-        const errorData = await respons.json();
-        throw new Error(errorData.error || "dates booked not found");
+        throw await apiError(respons, "dates booked not found");
       }
       return await respons.json();
     } catch (error) {
@@ -56,8 +75,7 @@ const useBookingAPI = () => {
 
         if (!response.ok) {
           console.log("Response could not be resolved properly");
-          const message = await response.json();
-          throw new Error(message.error || "Booking not found");
+          throw await apiError(response, "Booking not found");
         }
         return await response.json();
       } catch (error) {
@@ -89,8 +107,7 @@ const useBookingAPI = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to check availability");
+          throw await apiError(response, "Failed to check availability");
         }
 
         return await response.json();
@@ -133,8 +150,7 @@ const useBookingAPI = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to create booking");
+          throw await apiError(response, "Failed to create booking");
         }
 
         return await response.json();
@@ -170,8 +186,7 @@ const useBookingAPI = () => {
         });
 
         if (!response.ok) {
-          const dataError = await response.json();
-          throw new Error(dataError.message || "Could not confirm booking");
+          throw await apiError(response, "Could not confirm booking");
         }
 
         return await response.json();
@@ -208,8 +223,7 @@ const useBookingAPI = () => {
 
         if (!response.ok) {
           console.error("Failed to execute Rollback");
-          const dataError = await response.json();
-          throw new Error(dataError.message || "Could not rollback booking");
+          throw await apiError(response, "Could not rollback booking");
         }
 
         return await response.json();

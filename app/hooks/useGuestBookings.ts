@@ -5,12 +5,21 @@ import useRentalProgram, {
   CancelBookingParams,
   EscrowInfo,
 } from "./useRentalProgram";
+import useNow from "./useNow";
+import { bookingPhase } from "@/lib/booking/escrow";
+
+interface GuestBookingRecord {
+  apartment_id: number;
+  check_in_date: string;
+  tx_signature: string | null;
+}
 
 const useGuestBookings = () => {
   const { publicKey } = useWallet();
   const { fromUSDCAmount, program, cancelBooking } = useRentalProgram();
 
   const queryClient = useQueryClient();
+  const now = useNow();
   const bookingsQuery = useQuery<EscrowInfo[]>({
     queryKey: ["guest-booking", publicKey?.toBase58()],
 
@@ -37,7 +46,7 @@ const useGuestBookings = () => {
           const checkInDate = new Date(data.rentTime.toNumber() * 1000);
 
           const match = dbBookings?.find(
-            (b: any) =>
+            (b: GuestBookingRecord) =>
               b.apartment_id === data.apartmentId.toNumber() &&
               new Date(b.check_in_date).getTime() === checkInDate.getTime(),
           );
@@ -78,23 +87,22 @@ const useGuestBookings = () => {
     },
   });
 
+  const bookings = bookingsQuery.data ?? [];
+  const inPhase = (phase: ReturnType<typeof bookingPhase>) =>
+    bookings.filter((b) => bookingPhase(b, now) === phase);
+
   return {
-    bookings: bookingsQuery.data ?? [],
+    now,
+    bookings,
     isLoading: bookingsQuery.isLoading,
     isError: bookingsQuery.isError,
     error: bookingsQuery.error,
     refetch: bookingsQuery.refetch,
 
-    hasBookings: (bookingsQuery.data?.length ?? 0) > 0,
-    activeBookings:
-      bookingsQuery.data?.filter(
-        (b) => !b.rentEnded && b.checkInDate.getTime() <= Date.now(),
-      ) ?? [],
-    completedBookings: bookingsQuery.data?.filter((b) => b.rentEnded) ?? [],
-    upcomingBookings:
-      bookingsQuery.data?.filter(
-        (b) => !b.rentEnded && b.checkInDate.getTime() > Date.now(),
-      ) ?? [],
+    hasBookings: bookings.length > 0,
+    activeBookings: inPhase("active"),
+    completedBookings: inPhase("completed"),
+    upcomingBookings: inPhase("upcoming"),
 
     cancelBookingMutation: mutation.mutate,
     cancelError: mutation.error,

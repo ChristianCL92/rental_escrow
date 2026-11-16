@@ -80,6 +80,15 @@ Open [http://localhost:3000](http://localhost:3000) with your browser.
 ### Wallet Integration
 
 Uses `@solana/wallet-adapter-react` with browser-based wallets (Phantom, Solflare, etc.). The `SolanaWalletProvider` wraps the entire app.
+The cluster is the `SOLANA_NETWORK` constant in `lib/solana/network.ts` (devnet), which the provider, explorer links and badge all read.
+Off mainnet the nav and booking card show a "Test network - no real money" badge, which disappears when that constant is `mainnet-beta`.
+
+### Booking Flow (`components/BookingCard.tsx`)
+
+- Explains the escrow rules before payment; the wording mirrors `cancel_booking.rs` and `release_payment.rs` through `lib/booking/escrow.ts`.
+- Shows each step of the two wallet approvals, maps raw wallet, Anchor and API errors to plain language with `lib/booking/errors.ts`, and keeps the raw text behind "Details".
+- If the payment's confirmation times out or the connection drops, `lib/booking/settle.ts` polls the chain until the escrow appears or the blockhash has expired; only then are the held dates released, otherwise the pending booking is kept.
+- E2E tests drive it with an injected Wallet Standard wallet and a mocked RPC (`e2e/fixtures/`), so no browser extension or funded wallet is needed.
 
 ### Escrow Queries (`useEscrowQueries.ts`)
 
@@ -221,8 +230,10 @@ bun run test:e2e    # Playwright (requires: npx playwright install)
 
 `test:unit` is scoped to `lib` on purpose — unscoped, Bun's runner would also
 collect the Playwright specs under `e2e/` and choke on their imports. It
-currently covers the marketing output contract in `lib/marketing/schema.ts`
-(hashtag counting, the Spanish heuristic, fence stripping, channel selection).
+covers the marketing output contract in `lib/marketing/schema.ts` (hashtag
+counting, the Spanish heuristic, fence stripping, channel selection), the
+booking error mapping, escrow wording and payment settling in `lib/booking/`, and the network
+constants in `lib/solana/network.ts`.
 
 `*.test.ts` is excluded in `tsconfig.json`, since `next build` typechecks and
 would otherwise fail on the `bun:test` import. Adding `@types/bun` would let

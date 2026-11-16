@@ -27,6 +27,7 @@ export const GET = async (req: NextRequest) => {
 
     return NextResponse.json({ bookings: data }, { status: 200 });
   } catch (error) {
+    console.error("Booked dates error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

@@ -5,7 +5,9 @@ test.describe("Admin Dashboard", () => {
     await page.goto("/admin");
 
     await expect(
-      page.getByText(/connect.*wallet|owner|unauthorized|not authorized/i),
+      page
+        .locator("main")
+        .getByText(/connect.*wallet|owner|unauthorized|not authorized/i),
     ).toBeVisible();
   });
 

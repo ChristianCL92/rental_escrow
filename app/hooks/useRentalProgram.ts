@@ -6,7 +6,7 @@ import {
   useConnection,
   useAnchorWallet,
 } from "@solana/wallet-adapter-react";
-import { AnchorProvider, Program, BN } from "@coral-xyz/anchor";
+import { AnchorProvider, Program, BN, utils } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -15,6 +15,8 @@ import {
 } from "@solana/spl-token";
 import idl from "@/lib/idl/rental_escrow.json";
 import { RentalEscrow } from "@/lib/types/rental_escrow";
+import { escrowRentTime } from "@/lib/booking/escrow";
+import { PaymentOutcome, settlePayment } from "@/lib/booking/settle";
 
 const PROGRAM_ID = new PublicKey(idl.address);
 
@@ -34,6 +36,13 @@ export interface CreateEscrowParams {
   checkInDate: Date;
   ownerAddress: PublicKey;
   usdcMint: PublicKey;
+  /** Called once the payment is signed, before it is sent. */
+  onSigned?: (payment: SignedPayment) => void;
+}
+
+export interface SignedPayment {
+  signature: string;
+  lastValidBlockHeight: number;
 }
 
 export interface ReleasePaymentParams {
@@ -70,7 +79,7 @@ const useRentalProgram = () => {
       commitment: "confirmed",
     });
     return new Program<RentalEscrow>(idl as RentalEscrow, provider);
-  }, [connection, wallet]);
+  }, [connection, wallet, connected]);
 
   const toUSDCAmount = useCallback((amount: number) => {
     return amount * Math.pow(10, USDC_DECIMALS);
@@ -116,6 +125,40 @@ const useRentalProgram = () => {
     [],
   );
 
+  /**
+   * True when this wallet already has an escrow for the room. The program
+   * derives the escrow from [guest, apartment], so a second booking of the
+   * same room would fail on-chain until the first is cancelled or released.
+   */
+  const hasActiveBooking = useCallback(
+    async (apartmentId: number): Promise<boolean> => {
+      const escrowPDA = getEscrowPDA(apartmentId);
+      if (!escrowPDA) {
+        throw new Error("Wallet not connected");
+      }
+      const account = await connection.getAccountInfo(escrowPDA);
+      return account !== null;
+    },
+    [connection, getEscrowPDA],
+  );
+
+  /**
+   * Waits, bounded, until a signed payment either created the escrow or can
+   * no longer land because its blockhash expired.
+   */
+  const settleSignedPayment = useCallback(
+    (
+      apartmentId: number,
+      { lastValidBlockHeight }: SignedPayment,
+    ): Promise<PaymentOutcome> =>
+      settlePayment(lastValidBlockHeight, {
+        blockHeight: () => connection.getBlockHeight("confirmed"),
+        escrowExists: () => hasActiveBooking(apartmentId),
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      }),
+    [connection, hasActiveBooking],
+  );
+
   const createEscrow = useCallback(
     async ({
       amount,
@@ -123,17 +166,13 @@ const useRentalProgram = () => {
       checkInDate,
       ownerAddress,
       usdcMint,
+      onSigned,
     }: CreateEscrowParams): Promise<string> => {
       if (!publicKey || !program || !wallet) {
         throw new Error("Wallet not connected");
       }
 
-      const utcDate = Date.UTC(
-        checkInDate.getFullYear(),
-        checkInDate.getMonth(),
-        checkInDate.getDate(),
-      );
-      const rentTime = new BN(Math.floor(utcDate / 1000));
+      const rentTime = new BN(escrowRentTime(checkInDate));
       const amountEscrow = new BN(toUSDCAmount(amount));
       const escrowPDA = getEscrowPDA(apartmentId);
       if (!escrowPDA) {
@@ -151,9 +190,9 @@ const useRentalProgram = () => {
         true,
       );
 
-      const tx = await program.methods
+      const transaction = await program.methods
         .initialize(new BN(apartmentId), amountEscrow, rentTime)
-        .accounts({
+        .accountsPartial({
           escrowAccount: escrowPDA,
           escrowTokenAccount,
           guestTokenAccount,
@@ -162,12 +201,34 @@ const useRentalProgram = () => {
           owner: ownerAddress,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
-        } as any)
-        .rpc();
+        })
+        .transaction();
 
-      return tx;
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash("confirmed");
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
+
+      const signedTx = await wallet.signTransaction(transaction);
+      const signature = utils.bytes.bs58.encode(signedTx.signature!);
+      onSigned?.({ signature, lastValidBlockHeight });
+
+      await connection.sendRawTransaction(signedTx.serialize(), {
+        preflightCommitment: "confirmed",
+      });
+      const { value } = await connection.confirmTransaction(
+        { blockhash, lastValidBlockHeight, signature },
+        "confirmed",
+      );
+      if (value.err) {
+        throw new Error(
+          `Transaction ${signature} failed: ${JSON.stringify(value.err)}`,
+        );
+      }
+
+      return signature;
     },
-    [publicKey, program, wallet, toUSDCAmount, getEscrowPDA],
+    [publicKey, program, wallet, connection, toUSDCAmount, getEscrowPDA],
   );
 
   const createEscrowTokenAccount = useCallback(
@@ -245,7 +306,7 @@ const useRentalProgram = () => {
 
       const paymentReleaseAmount = await program?.methods
         .releasePayment()
-        .accounts({
+        .accountsPartial({
           escrowAccount: getPdaGuest(guestAddress, apartmentId),
           escrowTokenAccount,
           ownerTokenAccount,
@@ -253,7 +314,7 @@ const useRentalProgram = () => {
           guest: guestAddress,
           usdcMint: USDC_MINT,
           tokenProgram: TOKEN_PROGRAM_ID,
-        } as any)
+        })
         .rpc();
 
       return paymentReleaseAmount;
@@ -284,7 +345,7 @@ const useRentalProgram = () => {
 
       const txSignature = await program?.methods
         .cancelBooking()
-        .accounts({
+        .accountsPartial({
           escrowAccount: escrowPda,
           escrowTokenAccount,
           guest: wallet.publicKey,
@@ -292,7 +353,7 @@ const useRentalProgram = () => {
           usdcMint: USDC_MINT,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
-        } as any)
+        })
         .rpc();
 
       return txSignature;
@@ -316,6 +377,8 @@ const useRentalProgram = () => {
     getPdaGuest,
     createEscrow,
     createEscrowTokenAccount,
+    hasActiveBooking,
+    settleSignedPayment,
     releasePayment,
     cancelBooking,
     OWNER_ADDRESS,

@@ -42,14 +42,14 @@ test.describe("Property detail page", () => {
     await expect(monthCaptions).toHaveCount(2);
   });
 
-  test('book button says "Connect Wallet to Book" when disconnected', async ({
+  test('book button says "Connect wallet to pay" when disconnected', async ({
     page,
   }) => {
     await page.goto("/properties/room-001");
 
     await expect(
-      page.locator("button", { hasText: "Connect Wallet to Book" }),
-    ).toBeVisible();
+      page.getByRole("button", { name: "Connect wallet to pay" }),
+    ).toBeEnabled();
   });
 
   test("selecting dates shows price summary", async ({ page }) => {
@@ -63,8 +63,8 @@ test.describe("Property detail page", () => {
     await dayButtons.nth(0).click();
     await dayButtons.nth(2).click();
 
-    await expect(page.locator("text=Check-in")).toBeVisible();
-    await expect(page.locator("text=Check-out")).toBeVisible();
+    await expect(page.getByText("Check-in", { exact: true })).toBeVisible();
+    await expect(page.getByText("Check-out", { exact: true })).toBeVisible();
     await expect(page.locator("text=USDC").first()).toBeVisible();
   });
 
