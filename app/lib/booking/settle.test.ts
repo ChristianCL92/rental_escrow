@@ -2,8 +2,11 @@ import { describe, expect, it } from "bun:test";
 import { settlePayment } from "./settle";
 
 // A Solana transaction can land while the chain's block height is at most
-// its blockhash's lastValidBlockHeight, and never after.
+// its blockhash's lastValidBlockHeight, and never after. The height and the
+// escrow may come from different load-balanced RPC nodes, so a node a few
+// blocks behind can miss a payment that landed just before expiry.
 const LAST_VALID = 1_000;
+const WELL_PAST = LAST_VALID + 100;
 
 /** A fake chain: the height and escrow presence for each check, in order. */
 const chain = (checks: ({ height: number; escrow: boolean } | "fail")[]) => {
@@ -48,10 +51,19 @@ describe("settlePayment", () => {
     expect(await settlePayment(LAST_VALID, checks)).toBe("landed");
   });
 
-  it("reports expiry once the chain is past the blockhash with no escrow", async () => {
+  it("keeps waiting just past expiry for an escrow a lagging node has not seen yet", async () => {
+    const { checks } = chain([
+      { height: LAST_VALID + 1, escrow: false },
+      { height: LAST_VALID + 6, escrow: true },
+    ]);
+    expect(await settlePayment(LAST_VALID, checks)).toBe("landed");
+  });
+
+  it("reports expiry once the chain is well past the blockhash with no escrow", async () => {
     const { checks } = chain([
       { height: 990, escrow: false },
       { height: LAST_VALID + 1, escrow: false },
+      { height: WELL_PAST, escrow: false },
     ]);
     expect(await settlePayment(LAST_VALID, checks)).toBe("expired");
   });
@@ -69,7 +81,7 @@ describe("settlePayment", () => {
       "fail",
       { height: 990, escrow: false },
       "fail",
-      { height: LAST_VALID + 5, escrow: false },
+      { height: WELL_PAST, escrow: false },
     ]);
     expect(await settlePayment(LAST_VALID, checks, { maxFailures: 3 })).toBe(
       "expired",

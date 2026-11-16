@@ -2,7 +2,7 @@
  * Settles a payment that was signed but whose confirmation failed (a timeout
  * or a dropped connection). The transaction may still land until its
  * blockhash expires, so "no escrow yet" only means "not charged" once the
- * chain is past the transaction's last valid block height.
+ * chain is well past the transaction's last valid block height.
  */
 
 export type PaymentOutcome = "landed" | "expired" | "unknown";
@@ -21,21 +21,32 @@ export interface SettleOptions {
   maxFailures?: number;
   /** Checks before giving up, so a stalled chain cannot hold the guest. */
   maxChecks?: number;
+  /**
+   * Blocks past the last valid height before a missing escrow counts as
+   * final. The height and the escrow can be read from different RPC nodes,
+   * and the escrow's node may lag a few blocks behind.
+   */
+  expiryMargin?: number;
 }
 
 export const settlePayment = async (
   lastValidBlockHeight: number,
   { blockHeight, escrowExists, sleep }: SettleChecks,
-  { intervalMs = 2000, maxFailures = 5, maxChecks = 90 }: SettleOptions = {},
+  {
+    intervalMs = 2000,
+    maxFailures = 5,
+    maxChecks = 90,
+    expiryMargin = 32,
+  }: SettleOptions = {},
 ): Promise<PaymentOutcome> => {
   let failures = 0;
   for (let check = 1; ; check++) {
     try {
-      // Read the height before the escrow: once the height is past the
+      // Read the height before the escrow: once the height is well past the
       // blockhash, any landing is already visible to the escrow lookup.
       const height = await blockHeight();
       if (await escrowExists()) return "landed";
-      if (height > lastValidBlockHeight) return "expired";
+      if (height > lastValidBlockHeight + expiryMargin) return "expired";
       failures = 0;
     } catch {
       failures += 1;

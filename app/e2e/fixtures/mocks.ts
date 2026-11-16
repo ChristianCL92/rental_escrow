@@ -161,7 +161,7 @@ const rpcResult = (state: MockState, call: RpcCall): unknown => {
       }
       state.settleChecks += 1;
       return state.paymentSendFails === "never-lands" && state.settleChecks >= 2
-        ? LAST_VALID_BLOCK_HEIGHT + 1
+        ? LAST_VALID_BLOCK_HEIGHT + 100
         : LAST_VALID_BLOCK_HEIGHT - 10;
     case "getProgramAccounts":
       return state.escrowGuest ? [escrowAccount(state.escrowGuest)] : [];
