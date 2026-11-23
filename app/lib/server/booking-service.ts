@@ -16,8 +16,13 @@ import {
   OverlapError,
 } from "./bookings-repo";
 import type { EscrowChain } from "./chain";
-import { escrowsOpen, isTxSignature, verifyFunding } from "./escrow-proof";
-import { releaseStaleBookings, releaseWalletHolds } from "./holds";
+import {
+  escrowsOpen,
+  isTxSignature,
+  StayOf,
+  verifyFunding,
+} from "./escrow-proof";
+import { releaseStaleBookings, releaseWalletHolds, stayOf } from "./holds";
 import {
   AuthFailure,
   AuthResult,
@@ -104,14 +109,13 @@ const standingOverlaps = async (stay: Stay, deps: ServiceDeps, now: number) =>
  */
 const escrowOpen = async (
   deps: ServiceDeps,
-  wallet: string,
-  stay: Stay,
+  booking: StayOf,
   retryWhile?: boolean,
 ): Promise<boolean | ServiceResult> => {
   const attempts = retryWhile === undefined ? 1 : 3;
   try {
     for (let attempt = 1; ; attempt++) {
-      const [open] = await escrowsOpen(deps.chain(), [{ wallet, stay }]);
+      const [open] = await escrowsOpen(deps.chain(), [booking]);
       if (open !== retryWhile || attempt >= attempts) return open;
       await deps.sleep?.(1500);
     }
@@ -215,7 +219,7 @@ const confirmBooking = async (
     { sleep: deps.sleep },
   );
   if (!funding.ok) return fail(funding.status, funding.error);
-  const open = await escrowOpen(deps, auth.wallet, stay, false);
+  const open = await escrowOpen(deps, { wallet: auth.wallet, stay }, false);
   if (open !== true) {
     return open === false
       ? fail(409, "The escrow for this stay is no longer open.")
@@ -302,16 +306,7 @@ const cancelBooking = async (
     );
   }
 
-  const open = await escrowOpen(
-    deps,
-    auth.wallet,
-    {
-      apartmentId,
-      checkInDate: row.check_in_date,
-      checkOutDate: row.check_out_date,
-    },
-    true,
-  );
+  const open = await escrowOpen(deps, stayOf(row), true);
   if (typeof open !== "boolean") return open;
   if (open) {
     return fail(
@@ -366,7 +361,7 @@ export const releaseHold = async (
     return fail(409, "Only an unpaid hold can be released.");
   }
 
-  const open = await escrowOpen(deps, auth.wallet, stay);
+  const open = await escrowOpen(deps, stayOf(row));
   if (typeof open !== "boolean") return open;
   if (open) {
     return fail(409, "This booking is paid, so its nights stay booked.");

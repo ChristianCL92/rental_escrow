@@ -107,13 +107,25 @@ export const verifyFunding = async (
 export interface StayOf {
   wallet: string;
   stay: Stay;
+  /**
+   * The amount the escrow must hold, set for unpaid holds. A confirmed
+   * booking's amount was proven at confirm, against the price of that day.
+   */
+  amount?: bigint | null;
 }
+
+/** An unpaid hold, whose escrow only counts once it holds the stay's price. */
+export const holdOf = (wallet: string, stay: Stay): StayOf => ({
+  wallet,
+  stay,
+  amount: stayAmount(stay),
+});
 
 /**
  * For each booking, whether its escrow is open on chain: the guest's escrow
- * for the room exists and holds this check-in and this stay's price. A guest
- * has one escrow per room, so an escrow for other dates or another amount
- * means this booking's escrow is closed.
+ * for the room exists and holds this check-in, and for a hold its price. A
+ * guest has one escrow per room, so an escrow for other dates means this
+ * booking's escrow is closed.
  * Throws when the network cannot be read; callers must then keep the
  * booking as it is.
  */
@@ -127,7 +139,7 @@ export const escrowsOpen = async (
       escrowAddress(new PublicKey(wallet), stay.apartmentId),
     ),
   );
-  return bookings.map(({ wallet, stay }, i) => {
+  return bookings.map(({ wallet, stay, amount }, i) => {
     const account = accounts[i];
     if (!account) return false;
     if (account.owner !== PROGRAM_ID.toBase58()) return false;
@@ -139,7 +151,7 @@ export const escrowsOpen = async (
       escrow.guest === wallet &&
       escrow.apartmentId === stay.apartmentId &&
       escrow.rentTime === rentTimeForDay(stay.checkInDate) &&
-      escrow.amount === stayAmount(stay)
+      (amount === undefined || escrow.amount === amount)
     );
   });
 };

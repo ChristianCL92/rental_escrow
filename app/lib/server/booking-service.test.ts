@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Keypair } from "@solana/web3.js";
 import { HOLD_TTL_MS, SESSION_TTL_MS } from "@/lib/booking/auth-message";
+import { rentTimeForDay } from "@/lib/booking/escrow";
 import type { Stay } from "@/lib/booking/limits";
 import {
   bookedDates,
@@ -445,6 +446,20 @@ describe("cancelling (PATCH status cancelled)", () => {
     env.clock.advance(HOLD_TTL_MS);
     expect((await reserve(env, attacker)).status).toBe(201);
     expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
+  });
+
+  test("a paid booking keeps its nights when the room's price changes later", async () => {
+    const env = setup();
+    const { bookingId } = await confirmedBooking(env);
+    env.rpc.openEscrow(
+      guest.publicKey,
+      STAY.apartmentId,
+      BigInt(45_000_000),
+      rentTimeForDay(STAY.checkInDate),
+    );
+    env.clock.advance(HOLD_TTL_MS);
+    expect((await reserve(env, attacker)).status).toBe(409);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
   });
 
   test("a lagging read right after confirm does not free a paid booking", async () => {

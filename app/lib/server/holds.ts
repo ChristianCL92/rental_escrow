@@ -2,7 +2,7 @@ import { HOLD_TTL_MS } from "@/lib/booking/auth-message";
 import { rentTimeForDay } from "@/lib/booking/escrow";
 import type { BookingRow, BookingsRepo } from "./bookings-repo";
 import type { EscrowChain } from "./chain";
-import { escrowsOpen } from "./escrow-proof";
+import { escrowsOpen, holdOf, StayOf } from "./escrow-proof";
 
 /**
  * Unpaid holds expire. A hold is the pending row created when the guest
@@ -51,14 +51,17 @@ export interface HoldDeps {
   openEscrows?: Map<string, number>;
 }
 
-const stayOf = (row: BookingRow) => ({
-  wallet: row.guest_wallet,
-  stay: {
+/** The escrow a booking row stands for. */
+export const stayOf = (row: BookingRow): StayOf => {
+  const stay = {
     apartmentId: row.apartment_id,
     checkInDate: row.check_in_date,
     checkOutDate: row.check_out_date,
-  },
-});
+  };
+  return row.status === "pending"
+    ? holdOf(row.guest_wallet, stay)
+    : { wallet: row.guest_wallet, stay };
+};
 
 /**
  * Releases the holds among `rows` that `shouldRelease` picks and whose
