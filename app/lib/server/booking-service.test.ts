@@ -42,6 +42,17 @@ const paidHold = async (env: Env, who = guest, stay: Stay = STAY) => {
   return { auth, bookingId, txSignature };
 };
 
+/** A guest's hold, paid on chain and confirmed. */
+const confirmedBooking = async (env: Env, who = guest, stay: Stay = STAY) => {
+  const { auth, bookingId, txSignature } = await paidHold(env, who, stay);
+  const result = await updateBooking(
+    { bookingId, status: "confirmed", txSignature, ...stay, auth },
+    env.deps,
+  );
+  expect(result.status).toBe(200);
+  return { bookingId };
+};
+
 describe("creating a hold (POST /api/bookings)", () => {
   test("a signed, valid stay is held as pending", async () => {
     const env = setup();
@@ -259,7 +270,7 @@ describe("confirming (PATCH status confirmed)", () => {
   test("a lagging RPC node does not refuse a real payment's confirm", async () => {
     const env = setup();
     const { auth, bookingId, txSignature } = await paidHold(env);
-    env.rpc.accountLag = 2;
+    env.rpc.lagAccounts(2, new Map());
     const result = await updateBooking(
       { bookingId, status: "confirmed", txSignature, ...STAY, auth },
       env.deps,
@@ -390,6 +401,40 @@ describe("cancelling (PATCH status cancelled)", () => {
       status: "confirmed",
     });
     expect((await updateBooking(body, env.deps)).status).toBe(401);
+  });
+
+  test("a node that has not yet seen the refund does not refuse the cancel", async () => {
+    const env = setup();
+    const { bookingId } = await confirmedBooking(env);
+    env.rpc.lagAccounts(1);
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    expect((await cancel(env, guest)).status).toBe(200);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
+  });
+
+  test("a cancelled booking no longer blocks a new hold on its nights", async () => {
+    const env = setup();
+    await confirmedBooking(env);
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    expect((await cancel(env, guest)).status).toBe(200);
+    expect((await reserve(env, attacker)).status).toBe(201);
+  });
+
+  test("a booking refunded on chain without telling the server frees its nights", async () => {
+    const env = setup();
+    const { bookingId } = await confirmedBooking(env);
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    expect((await reserve(env, attacker)).status).toBe(201);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
+  });
+
+  test("a refunded booking keeps its nights while the chain cannot be read", async () => {
+    const env = setup();
+    const { bookingId } = await confirmedBooking(env);
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    env.rpc.failing = true;
+    expect((await reserve(env, attacker)).status).toBe(409);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
   });
 
   test("an RPC outage keeps the booking", async () => {

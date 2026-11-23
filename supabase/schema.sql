@@ -14,10 +14,11 @@ create table bookings (
 
   constraint valid_date_range check (check_out_date > check_in_date),
 
+  -- Only pending and confirmed bookings hold nights; cancelled ones free them.
   constraint no_overlapping_bookings exclude using gist (
     apartment_id with =,
     daterange(check_in_date, check_out_date) with &&
-  )
+  ) where (status in ('pending', 'confirmed'))
 );
 
 -- Indexes

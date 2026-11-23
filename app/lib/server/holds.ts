@@ -1,4 +1,5 @@
 import { HOLD_TTL_MS } from "@/lib/booking/auth-message";
+import { rentTimeForDay } from "@/lib/booking/escrow";
 import type { BookingRow, BookingsRepo } from "./bookings-repo";
 import type { EscrowChain } from "./chain";
 import { escrowsOpen } from "./escrow-proof";
@@ -11,8 +12,14 @@ import { escrowsOpen } from "./escrow-proof";
  * (availability, booked dates, a new hold), always after checking the chain,
  * so a payment that landed late keeps its nights.
  *
- * Releasing deletes the row, because the overlap constraint in
- * supabase/schema.sql also counts rows of any other status.
+ * Releasing an unpaid hold deletes the row; no money moved, so no record is
+ * kept.
+ *
+ * A confirmed booking is released the same way once its guest refunded the
+ * escrow on chain, even if they never told the server: before check-in only
+ * a refund can close the escrow (the owner's payout opens at check-in), so a
+ * closed escrow then means the booking was cancelled. Its row is marked
+ * cancelled, which the overlap constraint in supabase/schema.sql ignores.
  */
 
 /** Postgres timestamps can carry microseconds; JS dates keep milliseconds. */
@@ -22,6 +29,11 @@ export const parseTimestamp = (value: string): number =>
 export const isExpiredHold = (row: BookingRow, now: number): boolean =>
   row.status === "pending" &&
   parseTimestamp(row.created_at) <= now - HOLD_TTL_MS;
+
+/** A confirmed booking whose escrow could still only close by a refund. */
+export const isRefundableBooking = (row: BookingRow, now: number): boolean =>
+  row.status === "confirmed" &&
+  now < rentTimeForDay(row.check_in_date) * 1000;
 
 export interface HoldDeps {
   repo: BookingsRepo;
@@ -65,7 +77,12 @@ const releaseHolds = async (
     candidates.map(async (row, i) => {
       if (open[i]) return;
       try {
-        if (await repo.deletePending(row.id, createdBefore)) {
+        const done =
+          row.status === "pending"
+            ? await repo.deletePending(row.id, createdBefore)
+            : (await repo.setStatus(row.id, ["confirmed"], "cancelled")) !==
+              null;
+        if (done) {
           released.add(row.id);
         }
       } catch (error) {
@@ -76,14 +93,18 @@ const releaseHolds = async (
   return rows.filter((row) => !released.has(row.id));
 };
 
-/** Releases the expired, unpaid holds among `rows`; returns the rest. */
-export const releaseExpiredHolds = (
+/**
+ * Releases the expired, unpaid holds and the refunded confirmed bookings
+ * among `rows`; returns the rest.
+ */
+export const releaseStaleBookings = (
   rows: BookingRow[],
   deps: HoldDeps,
 ): Promise<BookingRow[]> =>
   releaseHolds(
     rows,
-    (row) => isExpiredHold(row, deps.now),
+    (row) =>
+      isExpiredHold(row, deps.now) || isRefundableBooking(row, deps.now),
     deps,
     // Only delete what is still expired at write time.
     new Date(deps.now - HOLD_TTL_MS).toISOString(),

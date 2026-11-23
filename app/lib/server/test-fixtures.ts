@@ -137,8 +137,10 @@ export const memoryRepo = (clock: Clock) => {
     byId: async (id) => rows.get(id) ?? null,
     insert: async (booking) => {
       if (
-        all().some((row) =>
-          overlaps(
+        all().some(
+          (row) =>
+            ACTIVE.includes(row.status) &&
+            overlaps(
             row,
             booking.apartment_id,
             booking.check_in_date,
@@ -197,19 +199,26 @@ export class FakeRpc implements RpcConnection {
   calls: string[] = [];
   /** getTransaction answers null this many times before the real answer. */
   lag = 0;
-  /** getMultipleAccountsInfo answers no accounts this many times first. */
-  accountLag = 0;
+  private accountLag = 0;
+  private laggedAccounts = new Map<string, AccountInfo<Buffer>>();
+
+  /**
+   * The next `reads` getMultipleAccountsInfo calls answer from `snapshot`
+   * (by default, the accounts as they are now), like a node lagging behind.
+   */
+  lagAccounts(reads: number, snapshot = new Map(this.accounts)) {
+    this.accountLag = reads;
+    this.laggedAccounts = snapshot;
+  }
 
   getMultipleAccountsInfo: RpcConnection["getMultipleAccountsInfo"] = async (
     keys,
   ) => {
     this.calls.push("getMultipleAccountsInfo");
     if (this.failing) throw new Error("RPC unavailable");
-    if (this.accountLag > 0) {
-      this.accountLag -= 1;
-      return keys.map(() => null);
-    }
-    return keys.map((key) => this.accounts.get(key.toBase58()) ?? null);
+    const accounts = this.accountLag > 0 ? this.laggedAccounts : this.accounts;
+    if (this.accountLag > 0) this.accountLag -= 1;
+    return keys.map((key) => accounts.get(key.toBase58()) ?? null);
   };
 
   getTransaction = (async (signature: string) => {

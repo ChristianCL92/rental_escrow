@@ -16,7 +16,7 @@ import {
 } from "./bookings-repo";
 import type { EscrowChain } from "./chain";
 import { escrowsOpen, isTxSignature, verifyFunding } from "./escrow-proof";
-import { releaseExpiredHolds, releaseWalletHolds } from "./holds";
+import { releaseStaleBookings, releaseWalletHolds } from "./holds";
 import {
   AuthFailure,
   AuthResult,
@@ -80,26 +80,31 @@ const guestView = (row: BookingRow) => ({
   tx_signature: row.tx_signature,
 });
 
-/** Overlapping bookings still standing once expired holds are released. */
+/** Overlapping bookings still standing once stale bookings are released. */
 const standingOverlaps = async (stay: Stay, deps: ServiceDeps, now: number) =>
-  releaseExpiredHolds(
+  releaseStaleBookings(
     await deps
       .repo()
       .activeOverlapping(stay.apartmentId, stay.checkInDate, stay.checkOutDate),
     { repo: deps.repo(), chain: deps.chain(), now },
   );
 
-/** Whether the stay's escrow is open on chain, or a 503 if it can't be read. */
+/**
+ * Whether the stay's escrow is open on chain, or a 503 if it can't be read.
+ * With `retryWhile`, an answer equal to it is read up to 3 times, since our
+ * RPC node can lag behind the browser's.
+ */
 const escrowOpen = async (
   deps: ServiceDeps,
   wallet: string,
   stay: Stay,
-  attempts = 1,
+  retryWhile?: boolean,
 ): Promise<boolean | ServiceResult> => {
+  const attempts = retryWhile === undefined ? 1 : 3;
   try {
     for (let attempt = 1; ; attempt++) {
       const [open] = await escrowsOpen(deps.chain(), [{ wallet, stay }]);
-      if (open || attempt >= attempts) return open;
+      if (open !== retryWhile || attempt >= attempts) return open;
       await deps.sleep?.(1500);
     }
   } catch (error) {
@@ -202,7 +207,7 @@ const confirmBooking = async (
     { sleep: deps.sleep },
   );
   if (!funding.ok) return fail(funding.status, funding.error);
-  const open = await escrowOpen(deps, auth.wallet, stay, 3);
+  const open = await escrowOpen(deps, auth.wallet, stay, false);
   if (open !== true) {
     return open === false
       ? fail(409, "The escrow for this stay is no longer open.")
@@ -280,11 +285,16 @@ const cancelBooking = async (
   );
   if (!row) return fail(404, NOT_FOUND);
 
-  const open = await escrowOpen(deps, auth.wallet, {
-    apartmentId,
-    checkInDate: row.check_in_date,
-    checkOutDate: row.check_out_date,
-  });
+  const open = await escrowOpen(
+    deps,
+    auth.wallet,
+    {
+      apartmentId,
+      checkInDate: row.check_in_date,
+      checkOutDate: row.check_out_date,
+    },
+    true,
+  );
   if (typeof open !== "boolean") return open;
   if (open) {
     return fail(
@@ -378,7 +388,7 @@ export const bookedDates = async (
     return fail(400, "This room does not exist.");
   }
   const repo = deps.repo();
-  const standing = await releaseExpiredHolds(
+  const standing = await releaseStaleBookings(
     await repo.activeForApartment(apartmentId),
     { repo, chain: deps.chain(), now: deps.now() },
   );
