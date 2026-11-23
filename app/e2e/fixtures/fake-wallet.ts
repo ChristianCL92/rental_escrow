@@ -4,19 +4,30 @@ import type { Page } from "@playwright/test";
  * A Wallet Standard wallet ("Test Wallet") injected into the page, so the
  * connected and paying states can be driven without a browser extension.
  * It holds a real Ed25519 key (WebCrypto) and really signs, because web3.js
- * verifies signatures before sending.
+ * verifies signatures before sending and the server verifies signed
+ * messages.
  *
  * Control it from a test through `window.__fakeWallet`:
  * - mode "approve" signs at once, "reject" refuses like a user would, and
  *   "hold" waits until `release(true | false)` so a test can look at the
  *   page while the wallet prompt is "open";
- * - `prompts` counts signature requests.
+ * - `prompts` counts signature requests (transactions and messages);
+ * - `messages` lists the text of every message it was asked to sign.
+ *
+ * Install it with `signMessage: false` to act like a wallet that can sign
+ * transactions but not messages.
  */
 export type FakeWalletMode = "approve" | "reject" | "hold";
+
+export interface FakeWalletOptions {
+  mode: FakeWalletMode;
+  signMessage: boolean;
+}
 
 export interface FakeWalletControl {
   mode: FakeWalletMode;
   prompts: number;
+  messages: string[];
   address: string | null;
   pending: number;
   release: (approve: boolean) => void;
@@ -29,7 +40,10 @@ declare global {
 }
 
 /** Runs in the browser; must be self-contained. */
-export function fakeWalletScript(initialMode: FakeWalletMode) {
+export function fakeWalletScript({
+  mode: initialMode,
+  signMessage: canSignMessages,
+}: FakeWalletOptions) {
   const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
   const toBase58 = (bytes: Uint8Array) => {
     const digits = [0];
@@ -72,6 +86,7 @@ export function fakeWalletScript(initialMode: FakeWalletMode) {
   const control = {
     mode: initialMode,
     prompts: 0,
+    messages: [] as string[],
     address: null as string | null,
     get pending() {
       return waiters.length;
@@ -96,12 +111,54 @@ export function fakeWalletScript(initialMode: FakeWalletMode) {
   ] as const;
 
   const register = async () => {
-    const keys = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
-      "sign",
-      "verify",
-    ])) as CryptoKeyPair;
+    // Like a real wallet, keep the same key across reloads of the tab.
+    const STORED = "__fakeWalletKey";
+    const loadKeys = async (): Promise<CryptoKeyPair | null> => {
+      try {
+        const saved = sessionStorage.getItem(STORED);
+        if (!saved) return null;
+        const { privateKey, publicKey } = JSON.parse(saved);
+        return {
+          privateKey: await crypto.subtle.importKey(
+            "jwk",
+            privateKey,
+            { name: "Ed25519" },
+            true,
+            ["sign"],
+          ),
+          publicKey: await crypto.subtle.importKey(
+            "jwk",
+            publicKey,
+            { name: "Ed25519" },
+            true,
+            ["verify"],
+          ),
+        };
+      } catch {
+        return null;
+      }
+    };
+    let keys = await loadKeys();
+    if (!keys) {
+      keys = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
+        "sign",
+        "verify",
+      ])) as CryptoKeyPair;
+      try {
+        sessionStorage.setItem(
+          STORED,
+          JSON.stringify({
+            privateKey: await crypto.subtle.exportKey("jwk", keys.privateKey),
+            publicKey: await crypto.subtle.exportKey("jwk", keys.publicKey),
+          }),
+        );
+      } catch {
+        // A fresh key per page load is fine for tests that do not reload.
+      }
+    }
+    const keyPair = keys;
     const publicKey = new Uint8Array(
-      await crypto.subtle.exportKey("raw", keys.publicKey),
+      await crypto.subtle.exportKey("raw", keyPair.publicKey),
     );
     const address = toBase58(publicKey);
     control.address = address;
@@ -110,7 +167,9 @@ export function fakeWalletScript(initialMode: FakeWalletMode) {
       address,
       publicKey,
       chains: CHAINS,
-      features: ["solana:signTransaction"] as const,
+      features: canSignMessages
+        ? ["solana:signTransaction", "solana:signMessage"]
+        : ["solana:signTransaction"],
     };
     let accounts: (typeof account)[] = [];
     const listeners = new Set<(props: { accounts: unknown }) => void>();
@@ -132,7 +191,11 @@ export function fakeWalletScript(initialMode: FakeWalletMode) {
       }
       if (index < 0) throw new Error("Test Wallet is not a signer");
       const signature = new Uint8Array(
-        await crypto.subtle.sign({ name: "Ed25519" }, keys.privateKey, message),
+        await crypto.subtle.sign(
+          { name: "Ed25519" },
+          keyPair.privateKey,
+          message,
+        ),
       );
       const signed = transaction.slice();
       signed.set(signature, sigCount.size + 64 * index);
@@ -144,6 +207,33 @@ export function fakeWalletScript(initialMode: FakeWalletMode) {
       if (control.mode === "approve") return Promise.resolve(true);
       if (control.mode === "reject") return Promise.resolve(false);
       return new Promise((resolve) => waiters.push(resolve));
+    };
+
+    const rejection = () =>
+      Object.assign(new Error("User rejected the request."), { code: 4001 });
+
+    const messageFeature = {
+      "solana:signMessage": {
+        version: "1.0.0",
+        signMessage: async (...inputs: { message: Uint8Array }[]) => {
+          control.messages.push(
+            ...inputs.map(({ message }) => new TextDecoder().decode(message)),
+          );
+          if (!(await decide())) throw rejection();
+          return Promise.all(
+            inputs.map(async ({ message }) => ({
+              signedMessage: message,
+              signature: new Uint8Array(
+                await crypto.subtle.sign(
+                  { name: "Ed25519" },
+                  keyPair.privateKey,
+                  new Uint8Array(message),
+                ),
+              ),
+            })),
+          );
+        },
+      },
     };
 
     const wallet = {
@@ -184,14 +274,11 @@ export function fakeWalletScript(initialMode: FakeWalletMode) {
           version: "1.0.0",
           supportedTransactionVersions: ["legacy", 0],
           signTransaction: async (...inputs: { transaction: Uint8Array }[]) => {
-            if (!(await decide())) {
-              throw Object.assign(new Error("User rejected the request."), {
-                code: 4001,
-              });
-            }
+            if (!(await decide())) throw rejection();
             return Promise.all(inputs.map(signOne));
           },
         },
+        ...(canSignMessages ? messageFeature : {}),
       },
     };
 
@@ -211,8 +298,9 @@ export function fakeWalletScript(initialMode: FakeWalletMode) {
 export const installFakeWallet = async (
   page: Page,
   mode: FakeWalletMode = "approve",
+  { signMessage = true }: { signMessage?: boolean } = {},
 ) => {
-  await page.addInitScript(fakeWalletScript, mode);
+  await page.addInitScript(fakeWalletScript, { mode, signMessage });
 };
 
 export const setWalletMode = (page: Page, mode: FakeWalletMode) =>

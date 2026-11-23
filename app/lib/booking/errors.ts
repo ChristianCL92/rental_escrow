@@ -5,13 +5,15 @@
  * sit behind a "Details" toggle for support.
  *
  * Money claims here must stay true for the stage that failed:
- * - "reserving" happens before any wallet prompt, so nothing was charged;
+ * - "signing" asks the wallet to sign a free message, so nothing was held or
+ *   charged;
+ * - "reserving" holds the nights after the signature, so nothing was charged;
  * - "account" creates the escrow token account (SOL only, no USDC moves);
  * - "payment" is the one transaction that moves USDC, and it is atomic, so a
  *   failed or rejected payment moved no USDC.
  */
 
-export type BookingStage = "reserving" | "account" | "payment";
+export type BookingStage = "signing" | "reserving" | "account" | "payment";
 
 export type ErrorAction =
   | "pick-dates"
@@ -63,6 +65,31 @@ export class ActiveBookingError extends Error {
     this.name = "ActiveBookingError";
   }
 }
+
+/**
+ * The connected wallet cannot sign messages, so it cannot prove a booking
+ * request is the guest's.
+ */
+export class MessageSigningUnsupportedError extends Error {
+  constructor(message = "This wallet does not support signing messages") {
+    super(message);
+    this.name = "MessageSigningUnsupportedError";
+  }
+}
+
+const isSigningUnsupported = (error: unknown): boolean =>
+  error instanceof MessageSigningUnsupportedError ||
+  asErrorLike(error)?.name === "MessageSigningUnsupportedError";
+
+const signingUnsupported = (
+  detail: string,
+  outcome: string,
+): FriendlyError => ({
+  title: "This wallet can't sign the request",
+  message: `El Solar asks your wallet to sign a short, free message to prove the request is yours, and this wallet doesn't support that. Connect a wallet such as Phantom or Solflare and try again. ${outcome}`,
+  detail,
+  action: "reconnect",
+});
 
 type ErrorLike = {
   name?: unknown;
@@ -173,6 +200,11 @@ export const describeBookingError = (
   const detail = errorDetail(error);
   const text = detail;
   const status = statusOf(error);
+  const nothing = stage === "signing" || stage === "reserving";
+
+  if (isSigningUnsupported(error)) {
+    return signingUnsupported(detail, "Nothing was charged.");
+  }
 
   if (
     error instanceof DatesTakenError ||
@@ -199,6 +231,14 @@ export const describeBookingError = (
   }
 
   if (isRejected(error, text)) {
+    if (stage === "signing") {
+      return {
+        title: "You cancelled in your wallet - nothing was charged",
+        message:
+          "No nights were held. Book again whenever you are ready and sign the request in your wallet.",
+        detail,
+      };
+    }
     return stage === "payment"
       ? {
           title: "You cancelled in your wallet - no USDC was charged",
@@ -235,6 +275,24 @@ export const describeBookingError = (
     };
   }
 
+  if (status === 401) {
+    return {
+      title: "We couldn't verify your signature",
+      message:
+        "Nothing was charged. Try again and sign the request in your wallet.",
+      detail,
+    };
+  }
+
+  if (status === 400 && nothing) {
+    return {
+      title: "These dates can't be booked",
+      message: `${error instanceof Error ? error.message : detail} Nothing was charged.`,
+      detail,
+      action: "pick-dates",
+    };
+  }
+
   if (status === 429) {
     return {
       title: "Too many attempts",
@@ -247,7 +305,7 @@ export const describeBookingError = (
     return {
       title: "Your wallet disconnected",
       message: `Reconnect your wallet and try again. ${
-        stage === "reserving" ? "Nothing" : "No USDC"
+        nothing ? "Nothing" : "No USDC"
       } was charged.`,
       detail,
       action: "reconnect",
@@ -269,7 +327,7 @@ export const describeBookingError = (
     return {
       title: "We couldn't reach the network",
       message: `Check your connection and try again. ${
-        stage === "reserving" ? "Nothing" : "No USDC"
+        nothing ? "Nothing" : "No USDC"
       } was charged.`,
       detail,
     };
@@ -288,7 +346,7 @@ export const describeBookingError = (
   return {
     title: "Your booking didn't go through",
     message: `${
-      stage === "reserving" ? "Nothing" : "No USDC"
+      nothing ? "Nothing" : "No USDC"
     } was charged. Please try again in a moment.`,
     detail,
   };
@@ -309,6 +367,13 @@ export const describeExpiredPayment = (detail: string): FriendlyError => ({
 /** Plain-language errors for cancelling a booking on My Bookings. */
 export const describeCancelError = (error: unknown): FriendlyError => {
   const detail = errorDetail(error);
+
+  if (isSigningUnsupported(error)) {
+    return signingUnsupported(
+      detail,
+      "Your booking is still active and your USDC is still in escrow.",
+    );
+  }
 
   if (isRejected(error, detail)) {
     return {
@@ -341,6 +406,30 @@ export const describeCancelError = (error: unknown): FriendlyError => {
     title: "We couldn't cancel this booking",
     message:
       "Refresh to see its current status, then try again. If the booking is still listed, your USDC is still in escrow.",
+    detail,
+  };
+};
+
+/** Plain-language errors for signing in to My Bookings. */
+export const describeSignInError = (error: unknown): FriendlyError => {
+  const detail = errorDetail(error);
+
+  if (isSigningUnsupported(error)) {
+    return signingUnsupported(detail, "Your bookings are safe on the network.");
+  }
+
+  if (isRejected(error, detail)) {
+    return {
+      title: "You cancelled in your wallet",
+      message:
+        "Your bookings stay private until you sign. Signing is free and is not a transaction.",
+      detail,
+    };
+  }
+
+  return {
+    title: "We couldn't sign you in",
+    message: "Your bookings are safe on the network. Please try again.",
     detail,
   };
 };

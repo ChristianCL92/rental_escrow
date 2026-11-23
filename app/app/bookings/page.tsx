@@ -1,5 +1,5 @@
 "use client";
-import { CircleAlert, Wallet } from "lucide-react";
+import { CircleAlert, Loader2, ShieldCheck, Wallet } from "lucide-react";
 import LoadingBookingSkeleton from "./loading";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,9 @@ import ConnectWalletButton from "@/components/wallet/ConnectWalletButton";
 import WalletHelp from "@/components/wallet/WalletHelp";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import ErrorDetails from "@/components/booking/ErrorDetails";
-import { errorDetail } from "@/lib/booking/errors";
+import BookingErrorAlert from "@/components/booking/BookingErrorAlert";
+import { describeSignInError, errorDetail } from "@/lib/booking/errors";
+import { SESSION_TTL_MS } from "@/lib/booking/auth-message";
 
 export const GuestPage = () => {
   const {
@@ -31,25 +33,34 @@ export const GuestPage = () => {
     cancelError,
     isCanceling,
     cancelReset,
+    needsSignIn,
+    signIn,
+    isSigningIn,
+    signInError,
+    signInReset,
   } = useGuestBookings();
 
   const { connected } = useWallet();
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [failedCancelId, setFailedCancelId] = useState<number | null>(null);
-  const { findBookingId, updateBooking } = useBookingAPI();
+  const { cancelRecord } = useBookingAPI();
 
   const handleCancelation = (apartmentId: number, checkInDate: Date) => {
     setCancelId(apartmentId);
     setFailedCancelId(null);
     cancelBookingMutation(
-      { apartmentId },
+      { apartmentId, checkInDate },
       {
         // Free the dates only once the refund went through on-chain; a
-        // rejected or failed cancel leaves the booking and its dates held.
-        onSuccess: async () => {
+        // refused signature, or a rejected or failed cancel, leaves the
+        // booking and its dates held.
+        onSuccess: async (result) => {
           try {
-            const { booking } = await findBookingId(apartmentId, checkInDate);
-            await updateBooking(booking.id, "cancelled");
+            await cancelRecord(
+              result.apartmentId,
+              result.checkInDate,
+              result.auth,
+            );
           } catch (recordError) {
             console.error(
               "refund done but booking record not updated",
@@ -85,6 +96,58 @@ export const GuestPage = () => {
             <ConnectWalletButton size="lg" />
           </div>
           <WalletHelp className="mt-4" />
+        </div>
+      </div>
+    );
+  }
+
+  if (needsSignIn) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/" aria-label="Back to properties">
+              <IoMdArrowBack aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
+        <div className="mx-auto max-w-md text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+            <ShieldCheck
+              aria-hidden="true"
+              className="h-8 w-8 text-slate-600"
+            />
+          </div>
+          <h1 className="text-2xl font-bold">My Bookings</h1>
+          <p className="mt-2 text-muted-foreground">
+            Sign a short message with your wallet to show your bookings. Signing
+            is free and is not a transaction. You stay signed in for{" "}
+            {SESSION_TTL_MS / 60_000} minutes.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Button
+              size="lg"
+              className="cursor-pointer"
+              disabled={isSigningIn}
+              onClick={() => signIn()}
+            >
+              {isSigningIn ? (
+                <>
+                  <Loader2 aria-hidden="true" className="animate-spin" />
+                  Waiting for your wallet...
+                </>
+              ) : (
+                "Sign in with wallet"
+              )}
+            </Button>
+          </div>
+          {signInError && (
+            <BookingErrorAlert
+              className="mt-6 text-left"
+              error={describeSignInError(signInError)}
+              onDismiss={signInReset}
+            />
+          )}
         </div>
       </div>
     );

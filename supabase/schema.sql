@@ -23,3 +23,9 @@ create table bookings (
 -- Indexes
 create index idx_bookings_apartment_status on bookings(apartment_id, status);
 create index idx_bookings_guest on bookings(guest_wallet);
+
+-- Row Level Security is enabled with no policies (enabled in the dashboard).
+-- The app reaches this table only from its server routes, with the service
+-- role key, which bypasses RLS; with no policies the anon and authenticated
+-- keys can read or change nothing.
+alter table bookings enable row level security;

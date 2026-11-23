@@ -63,3 +63,14 @@ export const bookingPhase = (
   if (booking.rentEnded) return "completed";
   return booking.checkInDate.getTime() <= now ? "active" : "upcoming";
 };
+
+/** USDC has 6 decimals: 1 USDC = 1_000_000 base units. */
+export const USDC_DECIMALS = 6;
+
+/**
+ * The program's `rent_time` for a check-in day sent as "yyyy-mm-dd": midnight
+ * UTC of that calendar day, in Unix seconds. The server-side twin of
+ * escrowRentTime, which starts from a date picked in the guest's calendar.
+ */
+export const rentTimeForDay = (day: string): number =>
+  Date.parse(`${day}T00:00:00Z`) / 1000;

@@ -23,6 +23,10 @@ export interface MockState {
   calls: string[];
   /** Full URLs of every mocked /api request, query included. */
   urls: string[];
+  /** Every mocked /api request with its JSON body and auth header. */
+  requests: ApiRequest[];
+  /** Status of POST /api/bookings/session (sign in to My Bookings). */
+  sessionStatus: 201 | 401;
   /** Signatures of transactions sent to the RPC, in order. */
   sent: string[];
   /**
@@ -39,6 +43,16 @@ export interface MockState {
   settleChecks: number;
 }
 
+export interface ApiRequest {
+  method: string;
+  path: string;
+  body: Record<string, unknown> | null;
+  authorization: string | null;
+}
+
+/** The token the mocked sign-in hands out. */
+export const SESSION_TOKEN = "test-session-token-0123456789";
+
 export const createMockState = (
   overrides: Partial<MockState> = {},
 ): MockState => ({
@@ -50,6 +64,8 @@ export const createMockState = (
   escrowGuest: null,
   calls: [],
   urls: [],
+  requests: [],
+  sessionStatus: 201,
   sent: [],
   paymentSendFails: false,
   paymentSendAborted: false,
@@ -269,7 +285,23 @@ const record = (state: MockState, request: Request) => {
   const url = new URL(request.url());
   state.calls.push(`${request.method()} ${url.pathname}`);
   state.urls.push(url.href);
+  let body: Record<string, unknown> | null = null;
+  try {
+    body = request.postDataJSON();
+  } catch {
+    body = null;
+  }
+  state.requests.push({
+    method: request.method(),
+    path: url.pathname,
+    body,
+    authorization: request.headers()["authorization"] ?? null,
+  });
 };
+
+/** The last mocked request to `method path`. */
+export const lastRequest = (state: MockState, method: string, path: string) =>
+  state.requests.findLast((r) => r.method === method && r.path === path);
 
 export const mockBookingApi = async (page: Page, state: MockState) => {
   await page.route("**/api/bookings/booked-dates*", (route) => {
@@ -289,7 +321,6 @@ export const mockBookingApi = async (page: Page, state: MockState) => {
           ? []
           : [
               {
-                id: "x",
                 check_in_date: "2026-01-01",
                 check_out_date: "2026-01-03",
               },
@@ -297,9 +328,24 @@ export const mockBookingApi = async (page: Page, state: MockState) => {
       }),
     );
   });
+  await page.route("**/api/bookings/session", (route) => {
+    record(state, route.request());
+    return route.fulfill(
+      state.sessionStatus === 201
+        ? json(201, {
+            token: SESSION_TOKEN,
+            expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
+          })
+        : json(401, { error: "The signature does not match this request." }),
+    );
+  });
   await page.route("**/api/bookings/guest*", (route) => {
     record(state, route.request());
-    return route.fulfill(json(200, { bookings: [] }));
+    return route.fulfill(
+      route.request().headers()["authorization"] === `Bearer ${SESSION_TOKEN}`
+        ? json(200, { bookings: [] })
+        : json(401, { error: "Sign in with your wallet to see bookings." }),
+    );
   });
   await page.route(/\/api\/bookings(\?.*)?$/, (route) => {
     const request = route.request();
@@ -308,7 +354,12 @@ export const mockBookingApi = async (page: Page, state: MockState) => {
       case "POST":
         return route.fulfill(
           state.createStatus === 201
-            ? json(201, { booking: { id: "booking-1", status: "pending" } })
+            ? json(201, {
+                booking: {
+                  id: "00000000-0000-4000-8000-000000000001",
+                  status: "pending",
+                },
+              })
             : json(409, {
                 error:
                   "Error, double booking attempt, dates no longer available!",

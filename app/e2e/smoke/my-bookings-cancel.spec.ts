@@ -2,14 +2,15 @@ import { test, expect, type Page } from "@playwright/test";
 import { installFakeWallet, setWalletMode } from "../fixtures/fake-wallet";
 import {
   ESCROW_CHECK_IN,
+  SESSION_TOKEN,
   createMockState,
+  lastRequest,
   mockBookingApi,
   mockSolanaRpc,
   type MockState,
 } from "../fixtures/mocks";
 
-/** Connects the Test Wallet on /bookings and gives it one upcoming escrow. */
-const openMyBookings = async (page: Page, state: MockState) => {
+const connect = async (page: Page, state: MockState) => {
   await page.goto("/bookings");
   await page
     .locator("main")
@@ -20,9 +21,103 @@ const openMyBookings = async (page: Page, state: MockState) => {
     .getByRole("button", { name: /Test Wallet/ })
     .click();
   state.escrowGuest = await page.evaluate(() => window.__fakeWallet.address);
-  await page.getByRole("button", { name: "Refetch" }).click();
+};
+
+/**
+ * Connects the Test Wallet on /bookings, gives it one upcoming escrow and
+ * signs in to My Bookings.
+ */
+const openMyBookings = async (page: Page, state: MockState) => {
+  await connect(page, state);
+  await page.getByRole("button", { name: "Sign in with wallet" }).click();
   await expect(page.getByText("Apartment #1")).toBeVisible();
 };
+
+const checkInDay = ESCROW_CHECK_IN.toISOString().slice(0, 10);
+
+test.describe("Signing in to My Bookings", () => {
+  let state: MockState;
+
+  test.beforeEach(async ({ page }) => {
+    state = createMockState();
+    await installFakeWallet(page, "approve");
+    await mockSolanaRpc(page, state);
+    await mockBookingApi(page, state);
+  });
+
+  test("asks for a free signature before showing bookings", async ({
+    page,
+  }) => {
+    await connect(page, state);
+    await expect(
+      page.getByText(
+        "Sign a short message with your wallet to show your bookings. Signing is free and is not a transaction. You stay signed in for 30 minutes.",
+      ),
+    ).toBeVisible();
+    expect(state.calls).not.toContain("GET /api/bookings/guest");
+    expect(await page.evaluate(() => window.__fakeWallet.prompts)).toBe(0);
+
+    await page.getByRole("button", { name: "Sign in with wallet" }).click();
+    await expect(page.getByText("Apartment #1")).toBeVisible();
+    const [message] = await page.evaluate(() => window.__fakeWallet.messages);
+    expect(message).toContain("Action: view");
+    expect(lastRequest(state, "GET", "/api/bookings/guest")).toMatchObject({
+      authorization: `Bearer ${SESSION_TOKEN}`,
+    });
+    // The wallet comes from the session, not from the URL.
+    const url = state.urls.find((u) => u.includes("/api/bookings/guest"))!;
+    expect(new URL(url).search).toBe("");
+  });
+
+  test("reuses the session after a reload instead of asking again", async ({
+    page,
+  }) => {
+    await openMyBookings(page, state);
+    expect(await page.evaluate(() => window.__fakeWallet.prompts)).toBe(1);
+
+    await page.reload();
+    await expect(page.getByText("Apartment #1")).toBeVisible();
+    expect(await page.evaluate(() => window.__fakeWallet.prompts)).toBe(0);
+    expect(
+      state.calls.filter((c) => c === "POST /api/bookings/session"),
+    ).toHaveLength(1);
+  });
+
+  test("a refused signature keeps bookings hidden and explains why", async ({
+    page,
+  }) => {
+    await connect(page, state);
+    await setWalletMode(page, "reject");
+    await page.getByRole("button", { name: "Sign in with wallet" }).click();
+
+    const error = page.getByTestId("booking-error");
+    await expect(error).toContainText("You cancelled in your wallet");
+    await expect(error).toContainText("Signing is free");
+    await expect(page.getByText("Apartment #1")).toHaveCount(0);
+    expect(state.calls).not.toContain("POST /api/bookings/session");
+
+    await setWalletMode(page, "approve");
+    await error.getByRole("button", { name: "Dismiss" }).click();
+    await page.getByRole("button", { name: "Sign in with wallet" }).click();
+    await expect(page.getByText("Apartment #1")).toBeVisible();
+  });
+});
+
+test.describe("My Bookings with a wallet that cannot sign messages", () => {
+  test("says so plainly", async ({ page }) => {
+    const state = createMockState();
+    await installFakeWallet(page, "approve", { signMessage: false });
+    await mockSolanaRpc(page, state);
+    await mockBookingApi(page, state);
+    await connect(page, state);
+    await page.getByRole("button", { name: "Sign in with wallet" }).click();
+
+    const error = page.getByTestId("booking-error");
+    await expect(error).toContainText("This wallet can't sign the request");
+    await expect(error).toContainText("Phantom or Solflare");
+    expect(state.calls).not.toContain("POST /api/bookings/session");
+  });
+});
 
 test.describe("Cancelling on My Bookings", () => {
   let state: MockState;
@@ -52,10 +147,11 @@ test.describe("Cancelling on My Bookings", () => {
 
       await page.getByRole("button", { name: "Cancel Booking" }).click();
       await expect.poll(() => state.calls).toContain("PATCH /api/bookings");
-      const lookup = state.urls.find((u) => u.includes("checkInDate="));
-      expect(new URL(lookup!).searchParams.get("checkInDate")).toBe(
-        ESCROW_CHECK_IN.toISOString().slice(0, 10),
-      );
+      expect(lastRequest(state, "PATCH", "/api/bookings")!.body).toMatchObject({
+        checkInDate: checkInDay,
+      });
+      const messages = await page.evaluate(() => window.__fakeWallet.messages);
+      expect(messages.at(-1)).toContain(`Check-in: ${checkInDay}`);
     });
   });
 
@@ -71,26 +167,34 @@ test.describe("Cancelling on My Bookings", () => {
       "You cancelled in your wallet - nothing changed",
     );
     await expect(error).toContainText("your USDC is still in escrow");
-    // The dates must stay blocked: no booking record is touched.
+    // The dates must stay blocked: no refund, no booking record touched.
+    expect(state.sent).toHaveLength(0);
     expect(state.calls).not.toContain("PATCH /api/bookings");
-    expect(state.calls).not.toContain("GET /api/bookings");
 
     await error.getByRole("button", { name: "Dismiss" }).click();
     await expect(error).toBeHidden();
   });
 
-  test("the booking record is cancelled only after the refund confirms", async ({
+  test("signs the cancel, refunds on chain, then records it", async ({
     page,
   }) => {
     await openMyBookings(page, state);
     await page.getByRole("button", { name: "Cancel Booking" }).click();
 
     await expect.poll(() => state.calls).toContain("PATCH /api/bookings");
-    // The booking record is looked up by the guest's check-in day.
-    const lookup = state.urls.find((u) => u.includes("checkInDate="));
-    expect(new URL(lookup!).searchParams.get("checkInDate")).toBe(
-      ESCROW_CHECK_IN.toISOString().slice(0, 10),
-    );
+    const address = await page.evaluate(() => window.__fakeWallet.address!);
+    const messages = await page.evaluate(() => window.__fakeWallet.messages);
+    expect(messages).toHaveLength(2);
+    expect(messages[1]).toContain("Action: cancel");
+    expect(messages[1]).toContain("Apartment: 1");
+    expect(lastRequest(state, "PATCH", "/api/bookings")!.body).toMatchObject({
+      status: "cancelled",
+      apartmentId: 1,
+      checkInDate: checkInDay,
+      auth: { wallet: address },
+    });
+    // Two prompts for the cancel: the signature, then the refund.
+    expect(await page.evaluate(() => window.__fakeWallet.prompts)).toBe(3);
     expect(state.sent).toHaveLength(1);
     expect(state.calls.indexOf("rpc:sendTransaction")).toBeLessThan(
       state.calls.indexOf("PATCH /api/bookings"),

@@ -1,7 +1,9 @@
 import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HOLD_TTL_MS } from "@/lib/booking/auth-message";
 
 export type ProgressStep =
+  | "signing"
   | "reserving"
   | "account"
   | "payment"
@@ -9,6 +11,7 @@ export type ProgressStep =
   | "confirmed";
 
 const STEPS: { id: Exclude<ProgressStep, "confirming">; label: string }[] = [
+  { id: "signing", label: "Sign to reserve" },
   { id: "reserving", label: "Reserving dates" },
   { id: "account", label: "Approve in wallet (1 of 2)" },
   { id: "payment", label: "Approve payment (2 of 2)" },
@@ -17,6 +20,8 @@ const STEPS: { id: Exclude<ProgressStep, "confirming">; label: string }[] = [
 
 export const stepHint = (step: ProgressStep, totalUsdc: number): string => {
   switch (step) {
+    case "signing":
+      return `Your wallet asks you to sign a short message. Signing is free, is not a transaction and moves no money. It proves this booking is yours and holds the nights for ${HOLD_TTL_MS / 60_000} minutes while you pay.`;
     case "reserving":
       return "Checking the nights are still free and holding them for you.";
     case "account":
@@ -33,6 +38,8 @@ export const stepHint = (step: ProgressStep, totalUsdc: number): string => {
 /** Short text for the screen-reader status region. */
 export const stepAnnouncement = (step: ProgressStep): string => {
   switch (step) {
+    case "signing":
+      return "Sign the free message in your wallet to reserve your dates.";
     case "reserving":
       return "Reserving your dates.";
     case "account":
@@ -52,8 +59,9 @@ interface BookingProgressProps {
 }
 
 /**
- * One click on Book leads to two wallet prompts. This list shows where the
- * guest is, so the second prompt reads as step 2 of 2 rather than a repeat
+ * One click on Book leads to a free signature and then two wallet approvals.
+ * This list shows where the guest is, so the signature does not read as a
+ * charge and the second approval reads as step 2 of 2 rather than a repeat
  * charge.
  */
 const BookingProgress = ({ step, totalUsdc }: BookingProgressProps) => {

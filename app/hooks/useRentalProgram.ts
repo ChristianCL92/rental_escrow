@@ -15,10 +15,9 @@ import {
 } from "@solana/spl-token";
 import idl from "@/lib/idl/rental_escrow.json";
 import { RentalEscrow } from "@/lib/types/rental_escrow";
-import { escrowRentTime } from "@/lib/booking/escrow";
+import { escrowRentTime, USDC_DECIMALS } from "@/lib/booking/escrow";
 import { PaymentOutcome, settlePayment } from "@/lib/booking/settle";
-
-const PROGRAM_ID = new PublicKey(idl.address);
+import { escrowAddress } from "@/lib/solana/escrow-account";
 
 export const OWNER_ADDRESS = new PublicKey(
   process.env.NEXT_PUBLIC_OWNER_ADDRESS!,
@@ -27,8 +26,6 @@ export const OWNER_ADDRESS = new PublicKey(
 export const USDC_MINT = new PublicKey(
   process.env.NEXT_PUBLIC_USDC_MINT_ADDRESS!,
 );
-
-export const USDC_DECIMALS = 6;
 
 export interface CreateEscrowParams {
   apartmentId: number;
@@ -90,38 +87,14 @@ const useRentalProgram = () => {
   }, []);
 
   const getEscrowPDA = useCallback(
-    (apartmentId: number): PublicKey | null => {
-      if (!publicKey) return null;
-
-      const apartmentIdBN = new BN(apartmentId);
-      const [escrowPDA] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("escrow"),
-          publicKey.toBuffer(),
-          apartmentIdBN.toArrayLike(Buffer, "le", 8),
-        ],
-        PROGRAM_ID,
-      );
-      return escrowPDA;
-    },
+    (apartmentId: number): PublicKey | null =>
+      publicKey ? escrowAddress(publicKey, apartmentId) : null,
     [publicKey],
   );
 
   const getPdaGuest = useCallback(
-    (guestAddress: PublicKey, apartmentId: number): PublicKey => {
-      const apartmentIdBN = new BN(apartmentId);
-
-      const [escrowPDAForGuest] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("escrow"),
-          guestAddress.toBuffer(),
-          apartmentIdBN.toArrayLike(Buffer, "le", 8),
-        ],
-        PROGRAM_ID,
-      );
-
-      return escrowPDAForGuest;
-    },
+    (guestAddress: PublicKey, apartmentId: number): PublicKey =>
+      escrowAddress(guestAddress, apartmentId),
     [],
   );
 

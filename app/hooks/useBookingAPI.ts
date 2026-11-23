@@ -2,6 +2,9 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useCallback, useState } from "react";
 import { format } from "date-fns";
 import { ApiError } from "@/lib/booking/errors";
+import type { SignedAuth } from "@/lib/booking/auth-message";
+import type { Stay } from "@/lib/booking/limits";
+import { signBookingAction } from "@/lib/booking/signing";
 
 interface AvailabilityParams {
   apartmentId: number;
@@ -9,9 +12,34 @@ interface AvailabilityParams {
   checkOutDate: Date;
 }
 
-const formatDate = (date: Date): string => {
+/** A hold and the reserve signature that created it. */
+export interface SignedHold {
+  bookingId: string;
+  stay: Stay;
+  auth: SignedAuth;
+}
+
+/** A guest's calendar day as the API sends it, "yyyy-MM-dd". */
+export const formatDate = (date: Date): string => {
   return format(date, "yyyy-MM-dd");
 };
+
+export const toStay = ({
+  apartmentId,
+  checkInDate,
+  checkOutDate,
+}: AvailabilityParams): Stay => ({
+  apartmentId,
+  checkInDate: formatDate(checkInDate),
+  checkOutDate: formatDate(checkOutDate),
+});
+
+const sendJson = (method: string, body: unknown) =>
+  fetch("/api/bookings", {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
 /**
  * Builds an ApiError from a failed response. The routes answer with
@@ -38,7 +66,7 @@ const useBookingAPI = () => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isRollback, setIsRollback] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { publicKey } = useWallet();
+  const { publicKey, signMessage } = useWallet();
 
   const datesBooked = useCallback(async (apartmentId: number) => {
     try {
@@ -59,34 +87,6 @@ const useBookingAPI = () => {
       throw error;
     }
   }, []);
-
-  const findBookingId = useCallback(
-    async (apartmentId: number, checkInDate: Date) => {
-      if (!publicKey) {
-        throw new Error("Wallet not connected");
-      }
-      try {
-        const params = new URLSearchParams({
-          apartmentId: apartmentId.toString(),
-          checkInDate: formatDate(checkInDate),
-          guestWallet: publicKey.toBase58(),
-        });
-        const response = await fetch(`/api/bookings?${params}`);
-
-        if (!response.ok) {
-          console.log("Response could not be resolved properly");
-          throw await apiError(response, "Booking not found");
-        }
-        return await response.json();
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "failed to get bookingId";
-        setError(message);
-        throw error;
-      }
-    },
-    [publicKey],
-  );
 
   const checkDatesAvailable = useCallback(
     async ({ apartmentId, checkInDate, checkOutDate }: AvailabilityParams) => {
@@ -126,34 +126,30 @@ const useBookingAPI = () => {
     [],
   );
 
+  /**
+   * Asks the wallet to sign the free "hold these nights" message. The same
+   * signature later confirms or releases that one hold.
+   */
+  const signReserve = useCallback(
+    (stay: Stay): Promise<SignedAuth> =>
+      signBookingAction(signMessage, publicKey, "reserve", stay),
+    [signMessage, publicKey],
+  );
+
   const createPending = useCallback(
-    async ({ apartmentId, checkInDate, checkOutDate }: AvailabilityParams) => {
+    async (stay: Stay, auth: SignedAuth): Promise<SignedHold> => {
       setIsCreating(true);
       setError(null);
 
-      if (!publicKey) {
-        throw new Error("Wallet not connected");
-      }
-
       try {
-        const response = await fetch("/api/bookings", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            apartmentId,
-            checkInDate: formatDate(checkInDate),
-            checkOutDate: formatDate(checkOutDate),
-            guestWallet: publicKey.toBase58(),
-          }),
-        });
+        const response = await sendJson("POST", { ...stay, auth });
 
         if (!response.ok) {
           throw await apiError(response, "Failed to create booking");
         }
 
-        return await response.json();
+        const { booking } = await response.json();
+        return { bookingId: booking.id, stay, auth };
       } catch (error) {
         const message =
           error instanceof Error
@@ -165,24 +161,21 @@ const useBookingAPI = () => {
         setIsCreating(false);
       }
     },
-    [publicKey],
+    [],
   );
 
-  const updateBooking = useCallback(
-    async (
-      bookingId: string,
-      status: "confirmed" | "cancelled",
-      txSignature?: string,
-    ) => {
+  /** Records the payment; the server checks it on chain. */
+  const confirmBooking = useCallback(
+    async ({ bookingId, stay, auth }: SignedHold, txSignature: string) => {
       setIsConfirming(true);
       setError(null);
       try {
-        const response = await fetch("/api/bookings", {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ bookingId, status, txSignature }),
+        const response = await sendJson("PATCH", {
+          bookingId,
+          status: "confirmed",
+          txSignature,
+          ...stay,
+          auth,
         });
 
         if (!response.ok) {
@@ -202,24 +195,32 @@ const useBookingAPI = () => {
     [],
   );
 
-  const rollbackBooking = useCallback(
-    async (bookingId: string) => {
-      setIsRollback(true);
-
-      if (!publicKey) {
-        throw new Error("Wallet not connected");
+  /**
+   * Marks a refunded booking cancelled. `auth` is the guest's signed cancel
+   * for this room and check-in day; the server checks the escrow is closed.
+   */
+  const cancelRecord = useCallback(
+    async (apartmentId: number, checkInDate: string, auth: SignedAuth) => {
+      const response = await sendJson("PATCH", {
+        status: "cancelled",
+        apartmentId,
+        checkInDate,
+        auth,
+      });
+      if (!response.ok) {
+        throw await apiError(response, "Could not cancel booking");
       }
+      return await response.json();
+    },
+    [],
+  );
+
+  /** Releases the guest's own unpaid hold. */
+  const rollbackBooking = useCallback(
+    async ({ bookingId, stay, auth }: SignedHold) => {
+      setIsRollback(true);
       try {
-        const response = await fetch("/api/bookings", {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            bookingId,
-            guestWallet: publicKey?.toBase58(),
-          }),
-        });
+        const response = await sendJson("DELETE", { bookingId, ...stay, auth });
 
         if (!response.ok) {
           console.error("Failed to execute Rollback");
@@ -237,17 +238,18 @@ const useBookingAPI = () => {
         setIsRollback(false);
       }
     },
-    [publicKey],
+    [],
   );
 
   return {
-    findBookingId,
     checkDatesAvailable,
     isChecking,
     error,
+    signReserve,
     createPending,
     isCreating,
-    updateBooking,
+    confirmBooking,
+    cancelRecord,
     isConfirming,
     rollbackBooking,
     isRollback,
