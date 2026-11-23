@@ -197,12 +197,18 @@ export class FakeRpc implements RpcConnection {
   calls: string[] = [];
   /** getTransaction answers null this many times before the real answer. */
   lag = 0;
+  /** getMultipleAccountsInfo answers no accounts this many times first. */
+  accountLag = 0;
 
   getMultipleAccountsInfo: RpcConnection["getMultipleAccountsInfo"] = async (
     keys,
   ) => {
     this.calls.push("getMultipleAccountsInfo");
     if (this.failing) throw new Error("RPC unavailable");
+    if (this.accountLag > 0) {
+      this.accountLag -= 1;
+      return keys.map(() => null);
+    }
     return keys.map((key) => this.accounts.get(key.toBase58()) ?? null);
   };
 

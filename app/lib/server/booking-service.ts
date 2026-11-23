@@ -94,10 +94,14 @@ const escrowOpen = async (
   deps: ServiceDeps,
   wallet: string,
   stay: Stay,
+  attempts = 1,
 ): Promise<boolean | ServiceResult> => {
   try {
-    const [open] = await escrowsOpen(deps.chain(), [{ wallet, stay }]);
-    return open;
+    for (let attempt = 1; ; attempt++) {
+      const [open] = await escrowsOpen(deps.chain(), [{ wallet, stay }]);
+      if (open || attempt >= attempts) return open;
+      await deps.sleep?.(1500);
+    }
   } catch (error) {
     console.error("escrow check failed:", error);
     return fail(
@@ -198,7 +202,7 @@ const confirmBooking = async (
     { sleep: deps.sleep },
   );
   if (!funding.ok) return fail(funding.status, funding.error);
-  const open = await escrowOpen(deps, auth.wallet, stay);
+  const open = await escrowOpen(deps, auth.wallet, stay, 3);
   if (open !== true) {
     return open === false
       ? fail(409, "The escrow for this stay is no longer open.")

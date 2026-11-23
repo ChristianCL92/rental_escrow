@@ -256,6 +256,18 @@ describe("confirming (PATCH status confirmed)", () => {
     });
   });
 
+  test("a lagging RPC node does not refuse a real payment's confirm", async () => {
+    const env = setup();
+    const { auth, bookingId, txSignature } = await paidHold(env);
+    env.rpc.accountLag = 2;
+    const result = await updateBooking(
+      { bookingId, status: "confirmed", txSignature, ...STAY, auth },
+      env.deps,
+    );
+    expect(result.status).toBe(200);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
+  });
+
   test("a payment whose escrow was refunded cannot confirm the hold", async () => {
     const env = setup();
     const { auth, bookingId, txSignature } = await paidHold(env);
