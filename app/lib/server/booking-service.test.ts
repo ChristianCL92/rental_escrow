@@ -424,14 +424,34 @@ describe("cancelling (PATCH status cancelled)", () => {
     const env = setup();
     const { bookingId } = await confirmedBooking(env);
     env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    env.clock.advance(HOLD_TTL_MS);
     expect((await reserve(env, attacker)).status).toBe(201);
     expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
+  });
+
+  test("a lagging read right after confirm does not free a paid booking", async () => {
+    const env = setup();
+    const { bookingId } = await confirmedBooking(env);
+    env.rpc.lagAccounts(1, new Map());
+    expect((await reserve(env, attacker)).status).toBe(409);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
+  });
+
+  test("calendar loads do not re-read an escrow just seen open", async () => {
+    const env = setup();
+    await confirmedBooking(env);
+    env.clock.advance(HOLD_TTL_MS);
+    await bookedDates("1", env.deps);
+    env.rpc.calls.length = 0;
+    await bookedDates("1", env.deps);
+    expect(env.rpc.calls).toEqual([]);
   });
 
   test("a refunded booking keeps its nights while the chain cannot be read", async () => {
     const env = setup();
     const { bookingId } = await confirmedBooking(env);
     env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    env.clock.advance(HOLD_TTL_MS);
     env.rpc.failing = true;
     expect((await reserve(env, attacker)).status).toBe(409);
     expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");

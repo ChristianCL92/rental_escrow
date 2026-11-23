@@ -15,12 +15,15 @@ const once = <T>(create: () => T): (() => T) => {
   return () => (value ??= create());
 };
 
+const openEscrows = new Map<string, number>();
+
 export const requestDeps = (): ServiceDeps => ({
   repo: once(() => createSupabaseBookingsRepo(createServerClient())),
   chain: once(() => createEscrowChain()),
   store: once(() => createUpstashAuthStore()),
   now: () => Date.now(),
   sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  openEscrows,
 });
 
 /** The JSON body, or null when there is none or it is not JSON. */

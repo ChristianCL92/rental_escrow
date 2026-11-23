@@ -378,6 +378,7 @@ export const setup = () => {
     store: () => store,
     now: () => clock.now,
     sleep: async () => {},
+    openEscrows: new Map(),
   };
   return { clock, repo, store, rpc, chain, deps };
 };

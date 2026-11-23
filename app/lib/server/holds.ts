@@ -20,7 +20,14 @@ import { escrowsOpen } from "./escrow-proof";
  * a refund can close the escrow (the owner's payout opens at check-in), so a
  * closed escrow then means the booking was cancelled. Its row is marked
  * cancelled, which the overlap constraint in supabase/schema.sql ignores.
+ * Like a hold, a booking is only looked at once it has stood HOLD_TTL_MS
+ * since it was confirmed, and not within HOLD_TTL_MS of check-in, so a
+ * lagging RPC node or clock cannot pass a fresh payment or the owner's
+ * payout off as a refund. An escrow read as open is not read again for
+ * OPEN_RECHECK_MS.
  */
+
+export const OPEN_RECHECK_MS = 60_000;
 
 /** Postgres timestamps can carry microseconds; JS dates keep milliseconds. */
 export const parseTimestamp = (value: string): number =>
@@ -30,15 +37,18 @@ export const isExpiredHold = (row: BookingRow, now: number): boolean =>
   row.status === "pending" &&
   parseTimestamp(row.created_at) <= now - HOLD_TTL_MS;
 
-/** A confirmed booking whose escrow could still only close by a refund. */
+/** A confirmed booking whose escrow could by now only close by a refund. */
 export const isRefundableBooking = (row: BookingRow, now: number): boolean =>
   row.status === "confirmed" &&
-  now < rentTimeForDay(row.check_in_date) * 1000;
+  parseTimestamp(row.updated_at) <= now - HOLD_TTL_MS &&
+  now < rentTimeForDay(row.check_in_date) * 1000 - HOLD_TTL_MS;
 
 export interface HoldDeps {
   repo: BookingsRepo;
   chain: EscrowChain;
   now: number;
+  /** When each confirmed booking's escrow was last read as open, by id. */
+  openEscrows?: Map<string, number>;
 }
 
 const stayOf = (row: BookingRow) => ({
@@ -58,7 +68,7 @@ const stayOf = (row: BookingRow) => ({
 const releaseHolds = async (
   rows: BookingRow[],
   shouldRelease: (row: BookingRow) => boolean,
-  { repo, chain }: HoldDeps,
+  { repo, chain, now, openEscrows }: HoldDeps,
   createdBefore?: string,
 ): Promise<BookingRow[]> => {
   const candidates = rows.filter(shouldRelease);
@@ -75,7 +85,10 @@ const releaseHolds = async (
   const released = new Set<string>();
   await Promise.all(
     candidates.map(async (row, i) => {
-      if (open[i]) return;
+      if (open[i]) {
+        if (row.status === "confirmed") openEscrows?.set(row.id, now);
+        return;
+      }
       try {
         const done =
           row.status === "pending"
@@ -84,6 +97,7 @@ const releaseHolds = async (
               null;
         if (done) {
           released.add(row.id);
+          openEscrows?.delete(row.id);
         }
       } catch (error) {
         console.error("could not release hold", row.id, error);
@@ -104,7 +118,10 @@ export const releaseStaleBookings = (
   releaseHolds(
     rows,
     (row) =>
-      isExpiredHold(row, deps.now) || isRefundableBooking(row, deps.now),
+      isExpiredHold(row, deps.now) ||
+      (isRefundableBooking(row, deps.now) &&
+        !((deps.openEscrows?.get(row.id) ?? -Infinity) >
+          deps.now - OPEN_RECHECK_MS)),
     deps,
     // Only delete what is still expired at write time.
     new Date(deps.now - HOLD_TTL_MS).toISOString(),

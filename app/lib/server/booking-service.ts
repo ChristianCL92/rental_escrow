@@ -40,6 +40,8 @@ export interface ServiceDeps {
   store: () => AuthStore;
   now: () => number;
   sleep?: (ms: number) => Promise<void>;
+  /** Shared across requests: see HoldDeps.openEscrows. */
+  openEscrows?: Map<string, number>;
 }
 
 export interface ServiceResult {
@@ -86,7 +88,12 @@ const standingOverlaps = async (stay: Stay, deps: ServiceDeps, now: number) =>
     await deps
       .repo()
       .activeOverlapping(stay.apartmentId, stay.checkInDate, stay.checkOutDate),
-    { repo: deps.repo(), chain: deps.chain(), now },
+    {
+      repo: deps.repo(),
+      chain: deps.chain(),
+      now,
+      openEscrows: deps.openEscrows,
+    },
   );
 
 /**
@@ -390,7 +397,12 @@ export const bookedDates = async (
   const repo = deps.repo();
   const standing = await releaseStaleBookings(
     await repo.activeForApartment(apartmentId),
-    { repo, chain: deps.chain(), now: deps.now() },
+    {
+      repo,
+      chain: deps.chain(),
+      now: deps.now(),
+      openEscrows: deps.openEscrows,
+    },
   );
   return reply(200, {
     bookings: standing.map((row) => ({
