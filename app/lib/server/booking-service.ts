@@ -89,6 +89,24 @@ const standingOverlaps = async (stay: Stay, deps: ServiceDeps, now: number) =>
     { repo: deps.repo(), chain: deps.chain(), now },
   );
 
+/** Whether the stay's escrow is open on chain, or a 503 if it can't be read. */
+const escrowOpen = async (
+  deps: ServiceDeps,
+  wallet: string,
+  stay: Stay,
+): Promise<boolean | ServiceResult> => {
+  try {
+    const [open] = await escrowsOpen(deps.chain(), [{ wallet, stay }]);
+    return open;
+  } catch (error) {
+    console.error("escrow check failed:", error);
+    return fail(
+      503,
+      "We couldn't check the escrow on the network. Please try again.",
+    );
+  }
+};
+
 /** POST /api/bookings: hold the nights for a signed, valid stay. */
 export const createHold = async (
   input: unknown,
@@ -180,6 +198,12 @@ const confirmBooking = async (
     { sleep: deps.sleep },
   );
   if (!funding.ok) return fail(funding.status, funding.error);
+  const open = await escrowOpen(deps, auth.wallet, stay);
+  if (open !== true) {
+    return open === false
+      ? fail(409, "The escrow for this stay is no longer open.")
+      : open;
+  }
 
   const repo = deps.repo();
   const row = await repo.byId(bookingId);
@@ -252,25 +276,12 @@ const cancelBooking = async (
   );
   if (!row) return fail(404, NOT_FOUND);
 
-  let open: boolean;
-  try {
-    [open] = await escrowsOpen(deps.chain(), [
-      {
-        wallet: auth.wallet,
-        stay: {
-          apartmentId,
-          checkInDate: row.check_in_date,
-          checkOutDate: row.check_out_date,
-        },
-      },
-    ]);
-  } catch (error) {
-    console.error("escrow check failed:", error);
-    return fail(
-      503,
-      "We couldn't check the escrow on the network. Please try again.",
-    );
-  }
+  const open = await escrowOpen(deps, auth.wallet, {
+    apartmentId,
+    checkInDate: row.check_in_date,
+    checkOutDate: row.check_out_date,
+  });
+  if (typeof open !== "boolean") return open;
   if (open) {
     return fail(
       409,
@@ -281,11 +292,12 @@ const cancelBooking = async (
   const used = await consumeSignature(deps.store(), auth, SIGNATURE_MAX_AGE_MS);
   if (used) return fromAuth(used);
 
-  const updated = await repo.setStatus(
-    row.id,
-    ["pending", "confirmed"],
-    "cancelled",
-  );
+  if (row.status === "pending") {
+    return (await repo.deletePending(row.id))
+      ? reply(200, { booking: { ...guestView(row), status: "cancelled" } })
+      : fail(404, NOT_FOUND);
+  }
+  const updated = await repo.setStatus(row.id, ["confirmed"], "cancelled");
   return updated
     ? reply(200, { booking: guestView(updated) })
     : fail(404, NOT_FOUND);
@@ -323,16 +335,8 @@ export const releaseHold = async (
     return fail(409, "Only an unpaid hold can be released.");
   }
 
-  let open: boolean;
-  try {
-    [open] = await escrowsOpen(deps.chain(), [{ wallet: auth.wallet, stay }]);
-  } catch (error) {
-    console.error("escrow check failed:", error);
-    return fail(
-      503,
-      "We couldn't check the escrow on the network. Please try again.",
-    );
-  }
+  const open = await escrowOpen(deps, auth.wallet, stay);
+  if (typeof open !== "boolean") return open;
   if (open) {
     return fail(409, "This booking is paid, so its nights stay booked.");
   }

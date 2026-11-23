@@ -256,6 +256,33 @@ describe("confirming (PATCH status confirmed)", () => {
     });
   });
 
+  test("a payment whose escrow was refunded cannot confirm the hold", async () => {
+    const env = setup();
+    const { auth, bookingId, txSignature } = await paidHold(env);
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    const result = await updateBooking(
+      { bookingId, status: "confirmed", txSignature, ...STAY, auth },
+      env.deps,
+    );
+    expect(result.status).toBe(409);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("pending");
+  });
+
+  test("a refunded payment cannot book the nights after the hold was released", async () => {
+    const env = setup();
+    const { auth, bookingId, txSignature } = await paidHold(env);
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    env.clock.advance(HOLD_TTL_MS);
+    await bookedDates("1", env.deps);
+    expect(env.repo.rows.size).toBe(0);
+    const result = await updateBooking(
+      { bookingId, status: "confirmed", txSignature, ...STAY, auth },
+      env.deps,
+    );
+    expect(result.status).toBe(409);
+    expect(env.repo.rows.size).toBe(0);
+  });
+
   test("the reserve signature stops covering the hold after its window", async () => {
     const env = setup();
     const { auth, bookingId, txSignature } = await paidHold(env);
@@ -297,10 +324,22 @@ describe("cancelling (PATCH status cancelled)", () => {
 
   test("the guest can record the cancel once the refund closed the escrow", async () => {
     const env = setup();
-    const { bookingId } = await paidHold(env);
+    const { auth, bookingId, txSignature } = await paidHold(env);
+    await updateBooking(
+      { bookingId, status: "confirmed", txSignature, ...STAY, auth },
+      env.deps,
+    );
     env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
     expect((await cancel(env, guest)).status).toBe(200);
     expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
+  });
+
+  test("cancelling an unpaid hold frees its nights for the next guest", async () => {
+    const env = setup();
+    const held = await reserve(env, attacker);
+    expect(held.status).toBe(201);
+    expect((await cancel(env, attacker)).status).toBe(200);
+    expect((await reserve(env, guest)).status).toBe(201);
   });
 
   test("nobody else can cancel the guest's booking", async () => {
