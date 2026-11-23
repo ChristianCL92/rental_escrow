@@ -99,8 +99,7 @@ describe("unpaid holds expire after 10 minutes", () => {
   test("a confirmed booking close to check-in is not read as refunded", async () => {
     const env = setup();
     const booking = seedHold(env, "confirmed");
-    env.clock.now =
-      Date.parse(`${STAY.checkInDate}T00:00:00Z`) - HOLD_TTL_MS;
+    env.clock.now = Date.parse(`${STAY.checkInDate}T00:00:00Z`) - HOLD_TTL_MS;
     expect(await release(env)).toHaveLength(1);
     expect(env.rpc.calls).toEqual([]);
     expect(env.repo.rows.get(booking.id)?.status).toBe("confirmed");

@@ -120,8 +120,10 @@ export const releaseStaleBookings = (
     (row) =>
       isExpiredHold(row, deps.now) ||
       (isRefundableBooking(row, deps.now) &&
-        !((deps.openEscrows?.get(row.id) ?? -Infinity) >
-          deps.now - OPEN_RECHECK_MS)),
+        !(
+          (deps.openEscrows?.get(row.id) ?? -Infinity) >
+          deps.now - OPEN_RECHECK_MS
+        )),
     deps,
     // Only delete what is still expired at write time.
     new Date(deps.now - HOLD_TTL_MS).toISOString(),
