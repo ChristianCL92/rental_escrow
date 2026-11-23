@@ -76,7 +76,10 @@ export const memoryAuthStore = (clock: Clock) => {
 
 const ACTIVE: BookingStatus[] = ["pending", "confirmed"];
 
-/** The bookings table; the overlap rule counts only active rows, as live. */
+/**
+ * The bookings table; the overlap rule ignores cancelled rows, as the live
+ * constraint does (`where (status <> 'cancelled')`).
+ */
 export const memoryRepo = (clock: Clock) => {
   const rows = new Map<string, BookingRow>();
   let next = 1;
@@ -139,7 +142,7 @@ export const memoryRepo = (clock: Clock) => {
       if (
         all().some(
           (row) =>
-            ACTIVE.includes(row.status) &&
+            row.status !== "cancelled" &&
             overlaps(
               row,
               booking.apartment_id,
