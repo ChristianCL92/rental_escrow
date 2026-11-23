@@ -111,8 +111,9 @@ export interface StayOf {
 
 /**
  * For each booking, whether its escrow is open on chain: the guest's escrow
- * for the room exists and holds this check-in. A guest has one escrow per
- * room, so an escrow for other dates means this booking's escrow is closed.
+ * for the room exists and holds this check-in and this stay's price. A guest
+ * has one escrow per room, so an escrow for other dates or another amount
+ * means this booking's escrow is closed.
  * Throws when the network cannot be read; callers must then keep the
  * booking as it is.
  */
@@ -137,7 +138,8 @@ export const escrowsOpen = async (
     return (
       escrow.guest === wallet &&
       escrow.apartmentId === stay.apartmentId &&
-      escrow.rentTime === rentTimeForDay(stay.checkInDate)
+      escrow.rentTime === rentTimeForDay(stay.checkInDate) &&
+      escrow.amount === stayAmount(stay)
     );
   });
 };

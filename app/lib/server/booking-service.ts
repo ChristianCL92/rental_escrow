@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { HOLD_TTL_MS, SESSION_TTL_MS } from "@/lib/booking/auth-message";
+import { rentTimeForDay } from "@/lib/booking/escrow";
 import {
   isApartmentId,
   parseDay,
@@ -291,6 +292,15 @@ const cancelBooking = async (
     checkInDate as string,
   );
   if (!row) return fail(404, NOT_FOUND);
+  if (
+    row.status === "confirmed" &&
+    now >= rentTimeForDay(row.check_in_date) * 1000
+  ) {
+    return fail(
+      409,
+      "This stay has started, so it can no longer be cancelled.",
+    );
+  }
 
   const open = await escrowOpen(
     deps,

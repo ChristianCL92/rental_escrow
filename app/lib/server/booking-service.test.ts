@@ -143,6 +143,15 @@ describe("creating a hold (POST /api/bookings)", () => {
     env.clock.advance(HOLD_TTL_MS * 2);
     expect((await reserve(env, attacker)).status).toBe(409);
   });
+
+  test("an escrow paying less than the stay does not keep an expired hold", async () => {
+    const env = setup();
+    const month: Stay = { ...STAY, checkOutDate: "2026-12-30" };
+    expect((await reserve(env, attacker, month)).status).toBe(201);
+    env.rpc.pay(attacker, month, { amount: BigInt(30_000_000) });
+    env.clock.advance(HOLD_TTL_MS);
+    expect((await reserve(env, guest, month)).status).toBe(201);
+  });
 });
 
 describe("public availability", () => {
@@ -355,6 +364,15 @@ describe("cancelling (PATCH status cancelled)", () => {
     env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
     expect((await cancel(env, guest)).status).toBe(200);
     expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
+  });
+
+  test("a payout after check-in is not taken for a refund", async () => {
+    const env = setup();
+    const { bookingId } = await confirmedBooking(env);
+    env.clock.advance(Date.parse("2026-12-01T12:00:00Z") - env.clock.now);
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    expect((await cancel(env, guest)).status).toBe(409);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
   });
 
   test("cancelling an unpaid hold frees its nights for the next guest", async () => {
