@@ -86,7 +86,7 @@ Off mainnet the nav and booking card show a "Test network - no real money" badge
 ### Booking Flow (`components/BookingCard.tsx`)
 
 - Explains the escrow rules before payment; the wording mirrors `cancel_booking.rs` and `release_payment.rs` through `lib/booking/escrow.ts`.
-- Shows each step of the two wallet approvals, maps raw wallet, Anchor and API errors to plain language with `lib/booking/errors.ts`, and keeps the raw text behind "Details".
+- Shows each step: the free "Sign to reserve" message signature, then the two wallet approvals. Maps raw wallet, Anchor and API errors to plain language with `lib/booking/errors.ts`, and keeps the raw text behind "Details".
 - If the payment's confirmation times out or the connection drops, `lib/booking/settle.ts` polls the chain until the escrow appears or the blockhash has expired; only then are the held dates released, otherwise the pending booking is kept.
 - E2E tests drive it with an injected Wallet Standard wallet and a mocked RPC (`e2e/fixtures/`), so no browser extension or funded wallet is needed.
 
