@@ -3,6 +3,7 @@ import { Keypair } from "@solana/web3.js";
 import { HOLD_TTL_MS, SESSION_TTL_MS } from "@/lib/booking/auth-message";
 import { rentTimeForDay } from "@/lib/booking/escrow";
 import type { Stay } from "@/lib/booking/limits";
+import { properties } from "@/lib/properties";
 import {
   bookedDates,
   checkAvailability,
@@ -437,7 +438,9 @@ describe("cancelling (PATCH status cancelled)", () => {
       check_out_date: STAY.checkOutDate,
       guest_wallet: guest.publicKey.toBase58(),
       status: "confirmed",
+      tx_signature: env.rpc.pay(guest, STAY),
     });
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
     expect((await updateBooking(body, env.deps)).status).toBe(401);
   });
 
@@ -470,15 +473,67 @@ describe("cancelling (PATCH status cancelled)", () => {
   test("a paid booking keeps its nights when the room's price changes later", async () => {
     const env = setup();
     const { bookingId } = await confirmedBooking(env);
+    const room = properties.find((p) => p.apartmentId === STAY.apartmentId)!;
+    const price = room.pricePerNight;
+    room.pricePerNight = price * 2;
+    try {
+      env.clock.advance(HOLD_TTL_MS);
+      expect((await reserve(env, attacker)).status).toBe(409);
+      expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
+    } finally {
+      room.pricePerNight = price;
+    }
+  });
+
+  test("an escrow re-opened with less than was paid frees the nights", async () => {
+    const env = setup();
+    const month: Stay = { ...STAY, checkOutDate: "2026-12-30" };
+    const { bookingId } = await confirmedBooking(env, guest, month);
+    env.rpc.closeEscrow(guest.publicKey, month.apartmentId);
+    env.rpc.openEscrow(
+      guest.publicKey,
+      month.apartmentId,
+      BigInt(30_000_000),
+      rentTimeForDay(month.checkInDate),
+    );
+    env.clock.advance(HOLD_TTL_MS);
+    expect((await reserve(env, attacker, month)).status).toBe(201);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
+  });
+
+  test("an escrow re-opened with more than was paid keeps the booking", async () => {
+    const env = setup();
+    const { bookingId } = await confirmedBooking(env);
     env.rpc.openEscrow(
       guest.publicKey,
       STAY.apartmentId,
-      BigInt(45_000_000),
+      BigInt(90_000_000),
       rentTimeForDay(STAY.checkInDate),
     );
     env.clock.advance(HOLD_TTL_MS);
     expect((await reserve(env, attacker)).status).toBe(409);
     expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
+  });
+
+  test("a booking whose payment cannot be read keeps its nights", async () => {
+    const env = setup();
+    const { bookingId } = await confirmedBooking(env);
+    env.rpc.transactions.clear();
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    env.clock.advance(HOLD_TTL_MS);
+    expect((await reserve(env, attacker)).status).toBe(409);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
+  });
+
+  test("a refund in the last minutes before check-in frees the nights", async () => {
+    const env = setup();
+    const { bookingId } = await confirmedBooking(env);
+    env.clock.advance(
+      Date.parse(`${STAY.checkInDate}T00:00:00Z`) - 5 * 60_000 - env.clock.now,
+    );
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    expect((await reserve(env, attacker)).status).toBe(201);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
   });
 
   test("a lagging read right after confirm does not free a paid booking", async () => {

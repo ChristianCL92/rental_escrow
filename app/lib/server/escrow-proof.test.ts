@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Keypair } from "@solana/web3.js";
 import { rentTimeForDay } from "@/lib/booking/escrow";
 import { createEscrowChain } from "./chain";
-import { escrowsOpen, stayAmount, verifyFunding } from "./escrow-proof";
+import { escrowsOpen, holdOf, stayAmount, verifyFunding } from "./escrow-proof";
 import { FakeRpc, STAY } from "./test-fixtures";
 
 const guest = Keypair.generate();
@@ -94,7 +94,7 @@ describe("payment proof for confirming a booking", () => {
 });
 
 describe("escrow state for cancelling and releasing", () => {
-  const booking = { wallet, stay: STAY };
+  const booking = holdOf(wallet, STAY);
 
   test("no escrow account means closed", async () => {
     const rpc = new FakeRpc();
@@ -134,7 +134,7 @@ describe("escrow state for cancelling and releasing", () => {
     rpc.pay(others[2], STAY);
     const result = await escrowsOpen(
       createEscrowChain(rpc),
-      others.map((k) => ({ wallet: k.publicKey.toBase58(), stay: STAY })),
+      others.map((k) => holdOf(k.publicKey.toBase58(), STAY)),
     );
     expect(result).toEqual([false, false, true, false, false]);
     expect(rpc.calls).toEqual(["getMultipleAccountsInfo"]);

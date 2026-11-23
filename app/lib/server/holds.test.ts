@@ -16,6 +16,9 @@ const seedHold = (
     check_out_date: STAY.checkOutDate,
     guest_wallet: guest.publicKey.toBase58(),
     status,
+    ...(status === "confirmed"
+      ? { tx_signature: env.rpc.pay(guest, STAY) }
+      : {}),
   });
 
 const release = async (env: ReturnType<typeof setup>) =>
@@ -64,7 +67,6 @@ describe("unpaid holds expire after 10 minutes", () => {
 
   test("a paid confirmed booking never expires", async () => {
     const env = setup();
-    env.rpc.pay(guest, STAY);
     seedHold(env, "confirmed");
     env.clock.advance(HOLD_TTL_MS * 100);
     expect(await release(env)).toHaveLength(1);
@@ -74,6 +76,7 @@ describe("unpaid holds expire after 10 minutes", () => {
   test("a confirmed booking refunded before check-in is marked cancelled", async () => {
     const env = setup();
     const booking = seedHold(env, "confirmed");
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
     env.clock.advance(HOLD_TTL_MS);
     expect(await release(env)).toEqual([]);
     expect(env.repo.rows.get(booking.id)?.status).toBe("cancelled");
@@ -82,6 +85,7 @@ describe("unpaid holds expire after 10 minutes", () => {
   test("a confirmed booking whose escrow closed from check-in on keeps its nights", async () => {
     const env = setup();
     const booking = seedHold(env, "confirmed");
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
     env.clock.now = Date.parse(`${STAY.checkInDate}T00:00:00Z`);
     expect(await release(env)).toHaveLength(1);
     expect(env.repo.rows.get(booking.id)?.status).toBe("confirmed");
@@ -96,18 +100,19 @@ describe("unpaid holds expire after 10 minutes", () => {
     expect(env.repo.rows.get(booking.id)?.status).toBe("confirmed");
   });
 
-  test("a confirmed booking close to check-in is not read as refunded", async () => {
+  test("a refund in the last minutes before check-in is still released", async () => {
     const env = setup();
     const booking = seedHold(env, "confirmed");
-    env.clock.now = Date.parse(`${STAY.checkInDate}T00:00:00Z`) - HOLD_TTL_MS;
-    expect(await release(env)).toHaveLength(1);
-    expect(env.rpc.calls).toEqual([]);
-    expect(env.repo.rows.get(booking.id)?.status).toBe("confirmed");
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    env.clock.now = Date.parse(`${STAY.checkInDate}T00:00:00Z`) - 60_000;
+    expect(await release(env)).toEqual([]);
+    expect(env.repo.rows.get(booking.id)?.status).toBe("cancelled");
   });
 
   test("a refunded confirmed booking is kept while the chain cannot be read", async () => {
     const env = setup();
     const booking = seedHold(env, "confirmed");
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
     env.clock.advance(HOLD_TTL_MS);
     env.rpc.failing = true;
     expect(await release(env)).toHaveLength(1);

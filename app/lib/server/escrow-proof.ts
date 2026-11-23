@@ -9,7 +9,7 @@ import {
   INITIALIZE_ACCOUNTS,
   PROGRAM_ID,
 } from "@/lib/solana/escrow-account";
-import type { EscrowChain } from "./chain";
+import type { ChainTransaction, EscrowChain } from "./chain";
 
 /**
  * On-chain proof behind booking status changes. A booking is confirmed only
@@ -84,34 +84,78 @@ export const verifyFunding = async (
     return refuse("This payment was not made by this wallet.");
   }
 
-  const escrow = escrowAddress(new PublicKey(wallet), stay.apartmentId);
   const amount = stayAmount(stay);
+  return amount !== null && fundedAmount(tx, wallet, stay) === amount
+    ? { ok: true }
+    : refuse("This payment did not fund this booking's escrow.");
+};
+
+/**
+ * The amount `tx`'s `initialize` instruction put in the escrow of `wallet`
+ * for the stay's room and check-in day, or null if it funded no such escrow.
+ */
+const fundedAmount = (
+  tx: ChainTransaction,
+  wallet: string,
+  stay: Stay,
+): bigint | null => {
+  const escrow = escrowAddress(new PublicKey(wallet), stay.apartmentId);
   const rentTime = rentTimeForDay(stay.checkInDate);
-  const funded = tx.instructions.some((ix) => {
-    if (ix.programId !== PROGRAM_ID.toBase58()) return false;
+  for (const ix of tx.instructions) {
+    if (ix.programId !== PROGRAM_ID.toBase58()) continue;
     const args = decodeInitialize(ix.data);
-    return (
+    if (
       args !== null &&
       ix.accounts[INITIALIZE_ACCOUNTS.escrow] === escrow.toBase58() &&
       ix.accounts[INITIALIZE_ACCOUNTS.guest] === wallet &&
       args.apartmentId === stay.apartmentId &&
-      args.rentTime === rentTime &&
-      args.amount === amount
-    );
-  });
-  return funded
-    ? { ok: true }
-    : refuse("This payment did not fund this booking's escrow.");
+      args.rentTime === rentTime
+    ) {
+      return args.amount;
+    }
+  }
+  return null;
+};
+
+/** A payment never changes, so what each one paid is kept for good. */
+const paidAmounts = new Map<string, bigint>();
+
+/**
+ * What a confirmed booking's payment put in escrow, read from its
+ * transaction. Null when the transaction cannot be read or funded no such
+ * escrow; callers must then keep the booking as it is.
+ */
+export const paidAmount = async (
+  chain: EscrowChain,
+  txSignature: string | null,
+  wallet: string,
+  stay: Stay,
+): Promise<bigint | null> => {
+  if (!txSignature) return null;
+  const known = paidAmounts.get(txSignature);
+  if (known !== undefined) return known;
+  try {
+    const tx = await chain.getTransaction(txSignature);
+    const amount =
+      tx && !tx.failed && tx.signers.includes(wallet)
+        ? fundedAmount(tx, wallet, stay)
+        : null;
+    if (amount !== null) paidAmounts.set(txSignature, amount);
+    return amount;
+  } catch (error) {
+    console.error("payment lookup failed:", error);
+    return null;
+  }
 };
 
 export interface StayOf {
   wallet: string;
   stay: Stay;
   /**
-   * The amount the escrow must hold, set for unpaid holds. A confirmed
-   * booking's amount was proven at confirm, against the price of that day.
+   * The least the escrow must hold: the stay's price for an unpaid hold,
+   * what was paid for a confirmed booking. Null when it is unknown.
    */
-  amount?: bigint | null;
+  amount: bigint | null;
 }
 
 /** An unpaid hold, whose escrow only counts once it holds the stay's price. */
@@ -123,9 +167,9 @@ export const holdOf = (wallet: string, stay: Stay): StayOf => ({
 
 /**
  * For each booking, whether its escrow is open on chain: the guest's escrow
- * for the room exists and holds this check-in, and for a hold its price. A
- * guest has one escrow per room, so an escrow for other dates means this
- * booking's escrow is closed.
+ * for the room exists, holds this check-in and at least the booking's amount.
+ * A guest has one escrow per room, so an escrow for other dates or with less
+ * money means this booking's escrow is closed.
  * Throws when the network cannot be read; callers must then keep the
  * booking as it is.
  */
@@ -151,7 +195,8 @@ export const escrowsOpen = async (
       escrow.guest === wallet &&
       escrow.apartmentId === stay.apartmentId &&
       escrow.rentTime === rentTimeForDay(stay.checkInDate) &&
-      (amount === undefined || escrow.amount === amount)
+      amount !== null &&
+      escrow.amount >= amount
     );
   });
 };

@@ -23,7 +23,7 @@ import {
   StayOf,
   verifyFunding,
 } from "./escrow-proof";
-import { releaseStaleBookings, releaseWalletHolds, stayOf } from "./holds";
+import { escrowOf, releaseStaleBookings, releaseWalletHolds } from "./holds";
 import {
   AuthFailure,
   AuthResult,
@@ -307,7 +307,14 @@ const cancelBooking = async (
     );
   }
 
-  const open = await escrowOpen(deps, stayOf(row), true);
+  const escrow = await escrowOf(row, deps.chain());
+  if (!escrow) {
+    return fail(
+      503,
+      "We couldn't check the payment on the network. Please try again.",
+    );
+  }
+  const open = await escrowOpen(deps, escrow, true);
   if (typeof open !== "boolean") return open;
   if (open) {
     return fail(
@@ -362,7 +369,7 @@ export const releaseHold = async (
     return fail(409, "Only an unpaid hold can be released.");
   }
 
-  const open = await escrowOpen(deps, stayOf(row));
+  const open = await escrowOpen(deps, holdOf(auth.wallet, stay));
   if (typeof open !== "boolean") return open;
   if (open) {
     return fail(409, "This booking is paid, so its nights stay booked.");

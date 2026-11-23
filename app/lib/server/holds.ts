@@ -2,7 +2,7 @@ import { HOLD_TTL_MS } from "@/lib/booking/auth-message";
 import { rentTimeForDay } from "@/lib/booking/escrow";
 import type { BookingRow, BookingsRepo } from "./bookings-repo";
 import type { EscrowChain } from "./chain";
-import { escrowsOpen, holdOf, StayOf } from "./escrow-proof";
+import { escrowsOpen, holdOf, paidAmount, StayOf } from "./escrow-proof";
 
 /**
  * Unpaid holds expire. A hold is the pending row created when the guest
@@ -20,11 +20,12 @@ import { escrowsOpen, holdOf, StayOf } from "./escrow-proof";
  * a refund can close the escrow (the owner's payout opens at check-in), so a
  * closed escrow then means the booking was cancelled. Its row is marked
  * cancelled, which the overlap constraint in supabase/schema.sql ignores.
- * Like a hold, a booking is only looked at once it has stood HOLD_TTL_MS
- * since it was confirmed, and not within HOLD_TTL_MS of check-in, so a
- * lagging RPC node or clock cannot pass a fresh payment or the owner's
- * payout off as a refund. An escrow read as open is not read again for
- * OPEN_RECHECK_MS.
+ * An escrow that holds less than the booking's payment, read from its
+ * transaction, no longer backs it and counts as closed. Like a hold, a
+ * booking is only looked at once it has stood HOLD_TTL_MS since it was
+ * confirmed, so a lagging RPC node cannot pass a fresh payment off as a
+ * refund, and only until check-in. An escrow read as open is not read again
+ * for OPEN_RECHECK_MS.
  */
 
 export const OPEN_RECHECK_MS = 60_000;
@@ -41,7 +42,7 @@ export const isExpiredHold = (row: BookingRow, now: number): boolean =>
 export const isRefundableBooking = (row: BookingRow, now: number): boolean =>
   row.status === "confirmed" &&
   parseTimestamp(row.updated_at) <= now - HOLD_TTL_MS &&
-  now < rentTimeForDay(row.check_in_date) * 1000 - HOLD_TTL_MS;
+  now < rentTimeForDay(row.check_in_date) * 1000;
 
 export interface HoldDeps {
   repo: BookingsRepo;
@@ -51,16 +52,27 @@ export interface HoldDeps {
   openEscrows?: Map<string, number>;
 }
 
-/** The escrow a booking row stands for. */
-export const stayOf = (row: BookingRow): StayOf => {
+/**
+ * The escrow a booking row stands for, or null if a confirmed booking's
+ * payment cannot be read.
+ */
+export const escrowOf = async (
+  row: BookingRow,
+  chain: EscrowChain,
+): Promise<StayOf | null> => {
   const stay = {
     apartmentId: row.apartment_id,
     checkInDate: row.check_in_date,
     checkOutDate: row.check_out_date,
   };
-  return row.status === "pending"
-    ? holdOf(row.guest_wallet, stay)
-    : { wallet: row.guest_wallet, stay };
+  if (row.status === "pending") return holdOf(row.guest_wallet, stay);
+  const amount = await paidAmount(
+    chain,
+    row.tx_signature,
+    row.guest_wallet,
+    stay,
+  );
+  return amount === null ? null : { wallet: row.guest_wallet, stay, amount };
 };
 
 /**
@@ -74,12 +86,20 @@ const releaseHolds = async (
   { repo, chain, now, openEscrows }: HoldDeps,
   createdBefore?: string,
 ): Promise<BookingRow[]> => {
-  const candidates = rows.filter(shouldRelease);
+  const picked = rows.filter(shouldRelease);
+  const escrows = await Promise.all(picked.map((row) => escrowOf(row, chain)));
+  picked.forEach((row, i) => {
+    if (escrows[i] === null) openEscrows?.set(row.id, now);
+  });
+  const candidates = picked.filter((_, i) => escrows[i] !== null);
   if (candidates.length === 0) return rows;
 
   let open: boolean[];
   try {
-    open = await escrowsOpen(chain, candidates.map(stayOf));
+    open = await escrowsOpen(
+      chain,
+      escrows.filter((escrow): escrow is StayOf => escrow !== null),
+    );
   } catch (error) {
     console.error("escrow check failed, keeping holds:", error);
     return rows;
