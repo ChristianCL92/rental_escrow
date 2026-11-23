@@ -18,6 +18,7 @@ import {
 import type { EscrowChain } from "./chain";
 import {
   escrowsOpen,
+  holdOf,
   isTxSignature,
   StayOf,
   verifyFunding,
@@ -219,7 +220,7 @@ const confirmBooking = async (
     { sleep: deps.sleep },
   );
   if (!funding.ok) return fail(funding.status, funding.error);
-  const open = await escrowOpen(deps, { wallet: auth.wallet, stay }, false);
+  const open = await escrowOpen(deps, holdOf(auth.wallet, stay), false);
   if (open !== true) {
     return open === false
       ? fail(409, "The escrow for this stay is no longer open.")

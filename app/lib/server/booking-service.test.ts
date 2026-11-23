@@ -301,6 +301,25 @@ describe("confirming (PATCH status confirmed)", () => {
     expect(env.repo.rows.get(bookingId)?.status).toBe("pending");
   });
 
+  test("a refunded payment re-opened with less money cannot confirm", async () => {
+    const env = setup();
+    const month: Stay = { ...STAY, checkOutDate: "2026-12-30" };
+    const { auth, bookingId, txSignature } = await paidHold(env, guest, month);
+    env.rpc.closeEscrow(guest.publicKey, month.apartmentId);
+    env.rpc.openEscrow(
+      guest.publicKey,
+      month.apartmentId,
+      BigInt(30_000_000),
+      rentTimeForDay(month.checkInDate),
+    );
+    const result = await updateBooking(
+      { bookingId, status: "confirmed", txSignature, ...month, auth },
+      env.deps,
+    );
+    expect(result.status).toBe(409);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("pending");
+  });
+
   test("a refunded payment cannot book the nights after the hold was released", async () => {
     const env = setup();
     const { auth, bookingId, txSignature } = await paidHold(env);
