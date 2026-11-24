@@ -1,36 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/initSupabase";
+import { NextRequest } from "next/server";
+import { bookedDates } from "@/lib/server/booking-service";
+import { respond } from "@/lib/server/route";
 
+/** Public: the taken nights of a room, for the calendar. */
 export const GET = async (req: NextRequest) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const apartmentId = searchParams.get("apartmentId");
-
-    if (!apartmentId) {
-      return NextResponse.json(
-        { error: "request missing parameters" },
-        { status: 400 },
-      );
-    }
-
-    const supabase = createServerClient();
-
-    const { data, error } = await supabase
-      .from("bookings")
-      .select("check_in_date, check_out_date")
-      .eq("apartment_id", apartmentId)
-      .in("status", ["pending", "confirmed"]);
-
-    if (error) {
-      return NextResponse.json({ error: "DB query failed" }, { status: 404 });
-    }
-
-    return NextResponse.json({ bookings: data }, { status: 200 });
-  } catch (error) {
-    console.error("Booked dates error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
-  }
+  const apartmentId = req.nextUrl.searchParams.get("apartmentId");
+  return respond("Booked dates", (deps) => bookedDates(apartmentId, deps));
 };

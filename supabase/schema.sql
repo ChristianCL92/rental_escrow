@@ -14,12 +14,20 @@ create table bookings (
 
   constraint valid_date_range check (check_out_date > check_in_date),
 
+  -- Cancelled bookings free their nights; every other status holds them.
+  -- This is the live definition.
   constraint no_overlapping_bookings exclude using gist (
     apartment_id with =,
     daterange(check_in_date, check_out_date) with &&
-  )
+  ) where (status <> 'cancelled')
 );
 
 -- Indexes
 create index idx_bookings_apartment_status on bookings(apartment_id, status);
 create index idx_bookings_guest on bookings(guest_wallet);
+
+-- Row Level Security is enabled with no policies (enabled in the dashboard).
+-- The app reaches this table only from its server routes, with the service
+-- role key, which bypasses RLS; with no policies the anon and authenticated
+-- keys can read or change nothing.
+alter table bookings enable row level security;

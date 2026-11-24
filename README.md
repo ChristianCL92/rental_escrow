@@ -72,10 +72,11 @@ rental_escrow/
 │   │   ├── admin/page.tsx                 # Owner dashboard (wallet-gated)
 │   │   ├── tools/marketing/page.tsx       # Marketing copy generator (no wallet)
 │   │   ├── api/bookings/
-│   │   │   ├── route.ts                   # GET, POST, PATCH, DELETE bookings
+│   │   │   ├── route.ts                   # POST, PATCH, DELETE bookings (wallet-signed)
 │   │   │   ├── availability/route.ts      # POST: check date conflicts
 │   │   │   ├── booked-dates/route.ts      # GET: disabled calendar dates
-│   │   │   └── guest/route.ts             # GET: bookings by wallet
+│   │   │   ├── guest/route.ts             # GET: the signed-in wallet's bookings
+│   │   │   └── session/route.ts           # POST: My Bookings sign-in
 │   │   └── api/marketing/
 │   │       └── generate/route.ts          # POST: generate + validate copy
 │   ├── proxy.ts                           # Per-route rate limiting (Next 16 middleware)
@@ -245,13 +246,15 @@ Push/PR to main → Install toolchain → Setup wallet → anchor test
 | `NEXT_PUBLIC_SUPABASE_URL`      | Client | Supabase project URL                       |
 | `SUPABASE_SERVICE_ROLE_KEY`     | Server | Supabase admin key (API routes only)       |
 | `ANTHROPIC_API_KEY`             | Server | Marketing copy generation (never sent to the browser) |
-| `UPSTASH_REDIS_REST_URL`        | Server | Rate limiting store                        |
-| `UPSTASH_REDIS_REST_TOKEN`      | Server | Rate limiting store                        |
+| `UPSTASH_REDIS_REST_URL`        | Server | Rate limiting, used signatures, sessions   |
+| `UPSTASH_REDIS_REST_TOKEN`      | Server | Rate limiting, used signatures, sessions   |
 | `SOLANA_KEYPAIR`                | CI     | GitHub Actions secret for test wallet      |
 
 Server-scoped variables have no `NEXT_PUBLIC_` prefix, so Next never inlines
 them into the client bundle. If Upstash is unreachable the rate limiter fails
 open and requests are allowed through, rather than taking the API down with it.
+Signed booking requests fail closed instead: without Upstash the server cannot
+tell a reused signature from a new one, so it refuses them.
 
 ## On-Chain Program
 

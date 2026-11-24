@@ -12,11 +12,12 @@ import {
   differenceInDays,
   eachDayOfInterval,
   format,
+  parseISO,
   startOfDay,
 } from "date-fns";
 import { CalendarX2, Loader2, Wallet } from "lucide-react";
 import useRentalProgram, { SignedPayment } from "@/hooks/useRentalProgram";
-import useBookingAPI from "@/hooks/useBookingAPI";
+import useBookingAPI, { SignedHold, toStay } from "@/hooks/useBookingAPI";
 import {
   ActiveBookingError,
   BookingStage,
@@ -25,7 +26,9 @@ import {
   describeExpiredPayment,
   errorDetail,
   FriendlyError,
+  MessageSigningUnsupportedError,
 } from "@/lib/booking/errors";
+import { lastBookableDay, MAX_NIGHTS } from "@/lib/booking/limits";
 import { escrowCheckInTime, formatDeadline } from "@/lib/booking/escrow";
 import { PaymentOutcome } from "@/lib/booking/settle";
 import NetworkBadge from "./NetworkBadge";
@@ -52,7 +55,7 @@ interface BookedDateRange {
 }
 
 const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
-  const { connected, connecting } = useWallet();
+  const { connected, connecting, signMessage } = useWallet();
   const { setVisible } = useWalletModal();
   const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -69,11 +72,15 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
   } = useRentalProgram();
   const {
     checkDatesAvailable,
+    signReserve,
     createPending,
-    updateBooking,
+    confirmBooking,
     rollbackBooking,
     datesBooked,
   } = useBookingAPI();
+  // The server refuses stays reaching past this day, so the calendar does
+  // not offer them.
+  const [lastDay] = useState(() => parseISO(lastBookableDay(Date.now())));
 
   const bookedDatesKey = ["booked-dates", apartmentId];
   const bookedDatesQuery = useQuery<{ bookings: BookedDateRange[] }>({
@@ -124,13 +131,22 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
     setBookingError(null);
     setConfirmed(null);
 
-    let stage: BookingStage = "reserving";
-    let bookingId: string | null = null;
+    let stage: BookingStage = "signing";
+    let hold: SignedHold | null = null;
     let txSignature: string | null = null;
     let signedPayment: SignedPayment | null = null;
-    setStep("reserving");
+    setStep("signing");
 
     try {
+      if (!signMessage) {
+        throw new MessageSigningUnsupportedError();
+      }
+      const stay = toStay({
+        apartmentId,
+        checkInDate: checkIn,
+        checkOutDate: checkOut,
+      });
+
       if (await hasActiveBooking(apartmentId)) {
         throw new ActiveBookingError();
       }
@@ -144,12 +160,11 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         throw new DatesTakenError();
       }
 
-      const { booking } = await createPending({
-        apartmentId,
-        checkInDate: checkIn,
-        checkOutDate: checkOut,
-      });
-      bookingId = booking.id;
+      const auth = await signReserve(stay);
+
+      stage = "reserving";
+      setStep("reserving");
+      hold = await createPending(stay, auth);
 
       stage = "account";
       setStep("account");
@@ -189,9 +204,9 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
       if (!txSignature) {
         setBookingError(friendly);
         setStep(null);
-        if (bookingId && !friendly.paymentMayHaveLanded) {
+        if (hold && !friendly.paymentMayHaveLanded) {
           try {
-            await rollbackBooking(bookingId);
+            await rollbackBooking(hold);
           } catch (rollbackError) {
             console.error(
               "failed to release the pending booking",
@@ -208,11 +223,11 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
     if (!txSignature) return;
 
     // The USDC is in escrow from here on, so the guest's booking stands even
-    // if recording the signature fails: the pending row still blocks the
-    // dates, and My Bookings reads the escrow from the chain.
-    if (bookingId) {
+    // if recording the signature fails: the server keeps a hold whose escrow
+    // is on chain, and My Bookings reads the escrow from the chain.
+    if (hold) {
       try {
-        await updateBooking(bookingId, "confirmed", txSignature);
+        await confirmBooking(hold, txSignature);
       } catch (recordError) {
         console.error(
           "escrow funded but booking record not updated",
@@ -314,9 +329,15 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
           disabled={
             busy
               ? true
-              : [(date) => date < startOfDay(new Date()), ...disabledDates]
+              : [
+                  (date) => date < startOfDay(new Date()),
+                  { after: lastDay },
+                  ...disabledDates,
+                ]
           }
+          max={MAX_NIGHTS}
           startMonth={new Date()}
+          endMonth={lastDay}
         />
       </div>
       {nights > 0 && (
