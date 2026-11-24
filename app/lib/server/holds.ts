@@ -63,8 +63,7 @@ export const escrowOf = (row: BookingRow, chain: EscrowChain): StayOf => {
   return {
     wallet: row.guest_wallet,
     stay,
-    amount: () =>
-      paidAmount(chain, row.tx_signature, row.guest_wallet, stay),
+    amount: () => paidAmount(chain, row.tx_signature, row.guest_wallet, stay),
   };
 };
 
