@@ -52,7 +52,7 @@ const confirmedBooking = async (env: Env, who = guest, stay: Stay = STAY) => {
     env.deps,
   );
   expect(result.status).toBe(200);
-  return { bookingId };
+  return { bookingId, txSignature };
 };
 
 describe("creating a hold (POST /api/bookings)", () => {
@@ -515,16 +515,6 @@ describe("cancelling (PATCH status cancelled)", () => {
     expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
   });
 
-  test("a booking whose payment cannot be read keeps its nights", async () => {
-    const env = setup();
-    const { bookingId } = await confirmedBooking(env);
-    env.rpc.transactions.clear();
-    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
-    env.clock.advance(HOLD_TTL_MS);
-    expect((await reserve(env, attacker)).status).toBe(409);
-    expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
-  });
-
   test("a refund in the last minutes before check-in frees the nights", async () => {
     const env = setup();
     const { bookingId } = await confirmedBooking(env);
@@ -552,6 +542,34 @@ describe("cancelling (PATCH status cancelled)", () => {
     env.rpc.calls.length = 0;
     await bookedDates("1", env.deps);
     expect(env.rpc.calls).toEqual([]);
+  });
+
+  test("a refund is recorded even when the payment can no longer be read", async () => {
+    const env = setup();
+    const { bookingId, txSignature } = await confirmedBooking(env);
+    env.rpc.transactions.delete(txSignature);
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    expect((await cancel(env, guest)).status).toBe(200);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
+  });
+
+  test("a refund frees the nights even when the payment can no longer be read", async () => {
+    const env = setup();
+    const { bookingId, txSignature } = await confirmedBooking(env);
+    env.rpc.transactions.delete(txSignature);
+    env.rpc.closeEscrow(guest.publicKey, STAY.apartmentId);
+    env.clock.advance(HOLD_TTL_MS);
+    expect((await reserve(env, attacker)).status).toBe(201);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("cancelled");
+  });
+
+  test("an open escrow keeps its booking when the payment cannot be read", async () => {
+    const env = setup();
+    const { bookingId, txSignature } = await confirmedBooking(env);
+    env.rpc.transactions.delete(txSignature);
+    env.clock.advance(HOLD_TTL_MS);
+    expect((await reserve(env, attacker)).status).toBe(409);
+    expect(env.repo.rows.get(bookingId)?.status).toBe("confirmed");
   });
 
   test("a refunded booking keeps its nights while the chain cannot be read", async () => {

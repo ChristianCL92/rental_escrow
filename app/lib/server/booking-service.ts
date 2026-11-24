@@ -307,14 +307,7 @@ const cancelBooking = async (
     );
   }
 
-  const escrow = await escrowOf(row, deps.chain());
-  if (!escrow) {
-    return fail(
-      503,
-      "We couldn't check the payment on the network. Please try again.",
-    );
-  }
-  const open = await escrowOpen(deps, escrow, true);
+  const open = await escrowOpen(deps, escrowOf(row, deps.chain()), true);
   if (typeof open !== "boolean") return open;
   if (open) {
     return fail(

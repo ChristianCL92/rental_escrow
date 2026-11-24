@@ -52,27 +52,20 @@ export interface HoldDeps {
   openEscrows?: Map<string, number>;
 }
 
-/**
- * The escrow a booking row stands for, or null if a confirmed booking's
- * payment cannot be read.
- */
-export const escrowOf = async (
-  row: BookingRow,
-  chain: EscrowChain,
-): Promise<StayOf | null> => {
+/** The escrow a booking row stands for. */
+export const escrowOf = (row: BookingRow, chain: EscrowChain): StayOf => {
   const stay = {
     apartmentId: row.apartment_id,
     checkInDate: row.check_in_date,
     checkOutDate: row.check_out_date,
   };
   if (row.status === "pending") return holdOf(row.guest_wallet, stay);
-  const amount = await paidAmount(
-    chain,
-    row.tx_signature,
-    row.guest_wallet,
+  return {
+    wallet: row.guest_wallet,
     stay,
-  );
-  return amount === null ? null : { wallet: row.guest_wallet, stay, amount };
+    amount: () =>
+      paidAmount(chain, row.tx_signature, row.guest_wallet, stay),
+  };
 };
 
 /**
@@ -86,19 +79,14 @@ const releaseHolds = async (
   { repo, chain, now, openEscrows }: HoldDeps,
   createdBefore?: string,
 ): Promise<BookingRow[]> => {
-  const picked = rows.filter(shouldRelease);
-  const escrows = await Promise.all(picked.map((row) => escrowOf(row, chain)));
-  picked.forEach((row, i) => {
-    if (escrows[i] === null) openEscrows?.set(row.id, now);
-  });
-  const candidates = picked.filter((_, i) => escrows[i] !== null);
+  const candidates = rows.filter(shouldRelease);
   if (candidates.length === 0) return rows;
 
   let open: boolean[];
   try {
     open = await escrowsOpen(
       chain,
-      escrows.filter((escrow): escrow is StayOf => escrow !== null),
+      candidates.map((row) => escrowOf(row, chain)),
     );
   } catch (error) {
     console.error("escrow check failed, keeping holds:", error);

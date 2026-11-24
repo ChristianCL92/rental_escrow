@@ -123,7 +123,7 @@ const paidAmounts = new Map<string, bigint>();
 /**
  * What a confirmed booking's payment put in escrow, read from its
  * transaction. Null when the transaction cannot be read or funded no such
- * escrow; callers must then keep the booking as it is.
+ * escrow.
  */
 export const paidAmount = async (
   chain: EscrowChain,
@@ -153,23 +153,24 @@ export interface StayOf {
   stay: Stay;
   /**
    * The least the escrow must hold: the stay's price for an unpaid hold,
-   * what was paid for a confirmed booking. Null when it is unknown.
+   * what was paid for a confirmed booking. Read only once a matching escrow
+   * exists; null when it is unknown, and the escrow then counts as open.
    */
-  amount: bigint | null;
+  amount: () => Promise<bigint | null>;
 }
 
 /** An unpaid hold, whose escrow only counts once it holds the stay's price. */
 export const holdOf = (wallet: string, stay: Stay): StayOf => ({
   wallet,
   stay,
-  amount: stayAmount(stay),
+  amount: async () => stayAmount(stay),
 });
 
 /**
  * For each booking, whether its escrow is open on chain: the guest's escrow
- * for the room exists, holds this check-in and at least the booking's amount.
- * A guest has one escrow per room, so an escrow for other dates or with less
- * money means this booking's escrow is closed.
+ * for the room exists, holds this check-in and at least the booking's amount
+ * when that is known. A guest has one escrow per room, so an escrow for
+ * other dates or with less money means this booking's escrow is closed.
  * Throws when the network cannot be read; callers must then keep the
  * booking as it is.
  */
@@ -183,20 +184,24 @@ export const escrowsOpen = async (
       escrowAddress(new PublicKey(wallet), stay.apartmentId),
     ),
   );
-  return bookings.map(({ wallet, stay, amount }, i) => {
-    const account = accounts[i];
-    if (!account) return false;
-    if (account.owner !== PROGRAM_ID.toBase58()) return false;
-    const escrow = decodeEscrowAccount(account.data);
-    // Only the program can create this address; data it cannot read is
-    // treated as open rather than guessed closed.
-    if (!escrow) return true;
-    return (
-      escrow.guest === wallet &&
-      escrow.apartmentId === stay.apartmentId &&
-      escrow.rentTime === rentTimeForDay(stay.checkInDate) &&
-      amount !== null &&
-      escrow.amount >= amount
-    );
-  });
+  return Promise.all(
+    bookings.map(async ({ wallet, stay, amount }, i) => {
+      const account = accounts[i];
+      if (!account) return false;
+      if (account.owner !== PROGRAM_ID.toBase58()) return false;
+      const escrow = decodeEscrowAccount(account.data);
+      // Only the program can create this address; data it cannot read is
+      // treated as open rather than guessed closed.
+      if (!escrow) return true;
+      if (
+        escrow.guest !== wallet ||
+        escrow.apartmentId !== stay.apartmentId ||
+        escrow.rentTime !== rentTimeForDay(stay.checkInDate)
+      ) {
+        return false;
+      }
+      const least = await amount();
+      return least === null || escrow.amount >= least;
+    }),
+  );
 };
