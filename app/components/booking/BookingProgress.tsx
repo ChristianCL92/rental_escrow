@@ -3,12 +3,7 @@ import { cn } from "@/lib/utils";
 import { HOLD_TTL_MS } from "@/lib/booking/auth-message";
 
 export type ProgressStep =
-  | "signing"
-  | "reserving"
-  | "account"
-  | "payment"
-  | "confirming"
-  | "confirmed";
+  "signing" | "reserving" | "account" | "payment" | "confirming" | "confirmed";
 
 const STEPS: { id: Exclude<ProgressStep, "confirming">; label: string }[] = [
   { id: "signing", label: "Sign to reserve" },
