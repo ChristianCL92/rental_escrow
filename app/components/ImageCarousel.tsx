@@ -13,7 +13,7 @@ interface ImageCarouselProps {
 }
 
 const navButtonClassName =
-  "absolute top-1/2 size-11 -translate-y-1/2 rounded-full border-0 bg-white/90 text-slate-900 shadow-md hover:bg-white focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 focus-visible:ring-offset-white cursor-pointer";
+  "absolute top-1/2 size-11 -translate-y-1/2 rounded-full border-0 bg-card/90 text-foreground shadow-md hover:bg-card focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-card cursor-pointer";
 
 const ImageCarousel = ({ images, label }: ImageCarouselProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -66,7 +66,7 @@ const ImageCarousel = ({ images, label }: ImageCarouselProps) => {
           </Button>
           <p
             aria-hidden="true"
-            className="absolute bottom-3 right-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs font-medium tabular-nums text-white"
+            className="absolute bottom-3 right-3 rounded-full bg-inverse/80 px-3 py-1 text-xs font-medium tabular-nums text-inverse-foreground"
           >
             {currentImageIndex + 1} / {total}
           </p>

@@ -17,6 +17,39 @@ test.describe("Home page", () => {
     await expect(page.locator("h1")).toContainText("reconnect with nature");
   });
 
+  test("brand fonts render: Figtree for text, Lora for headings", async ({
+    page,
+  }) => {
+    // The font variables must resolve where Tailwind applies the base font
+    // (<html>); otherwise every page silently falls back to the system font.
+    const fonts = await page.evaluate(async () => {
+      await document.fonts.ready;
+      const family = (selector: string) =>
+        getComputedStyle(document.querySelector(selector)!).fontFamily;
+      const loaded = (name: string) =>
+        [...document.fonts].some(
+          (face) =>
+            face.family.replace(/["']/g, "") === name &&
+            face.status === "loaded",
+        );
+      return {
+        html: family("html"),
+        body: family("body"),
+        h1: family("h1"),
+        h2: family("h2"),
+        figtree: loaded("Figtree"),
+        lora: loaded("Lora"),
+      };
+    });
+
+    expect(fonts.html).toMatch(/^Figtree\b/);
+    expect(fonts.body).toMatch(/^Figtree\b/);
+    expect(fonts.h1).toMatch(/^Lora\b/);
+    expect(fonts.h2).toMatch(/^Lora\b/);
+    expect(fonts.figtree).toBe(true);
+    expect(fonts.lora).toBe(true);
+  });
+
   test("all 5 property cards rendered", async ({ page }) => {
     const propertyNames = [
       "Room 001",

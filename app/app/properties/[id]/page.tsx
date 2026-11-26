@@ -31,7 +31,7 @@ const PropertyPage = async ({ params }: PropertyPageProps) => {
           <div className="mt-6">
             <div className="flex items-start justify-between">
               <div>
-                <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                <span className="rounded-full bg-inverse px-3 py-1 text-xs font-medium text-inverse-foreground">
                   {property.type}
                 </span>
                 <h1 className="mt-3 text-3xl font-bold">{property.name}</h1>
@@ -40,7 +40,7 @@ const PropertyPage = async ({ params }: PropertyPageProps) => {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-primary">
+                <p className="text-3xl font-bold text-foreground">
                   {property.pricePerNight} USDC
                 </p>
                 <p className="text-sm text-muted-foreground">per night</p>
@@ -55,7 +55,7 @@ const PropertyPage = async ({ params }: PropertyPageProps) => {
               {property.features.map((feature) => (
                 <span
                   key={feature}
-                  className="rounded-lg bg-slate-100 px-3 py-2 text-sm"
+                  className="rounded-lg bg-muted px-3 py-2 text-sm"
                 >
                   {feature}
                 </span>
@@ -68,7 +68,7 @@ const PropertyPage = async ({ params }: PropertyPageProps) => {
               {property.sharedAmenities.map((amenity) => (
                 <span
                   key={amenity}
-                  className="rounded-lg border bg-white px-3 py-2 text-center text-sm"
+                  className="rounded-lg border bg-card px-3 py-2 text-center text-sm"
                 >
                   {amenity}
                 </span>

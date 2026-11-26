@@ -25,12 +25,12 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
           className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
-        <span className="absolute left-3 top-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs font-medium text-white">
+        <span className="absolute left-3 top-3 rounded-full bg-inverse/80 px-3 py-1 text-xs font-medium text-inverse-foreground">
           {typeLabels[property.type]}
         </span>
 
         {!property.available && (
-          <span className="absolute right-3 top-3 rounded-full bg-red-500 px-3 py-1 text-xs font-medium text-white">
+          <span className="absolute right-3 top-3 rounded-full bg-destructive px-3 py-1 text-xs font-medium text-white">
             Unavailable
           </span>
         )}
@@ -44,7 +44,7 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-primary">
+            <p className="text-lg font-bold text-foreground">
               {property.pricePerNight} USDC
             </p>
             <p className="text-xs text-muted-foreground">per night</p>
@@ -61,13 +61,13 @@ const PropertyCard = ({ property }: PropertyCardProps) => {
           {property.features.slice(0, 3).map((feature) => (
             <span
               key={feature}
-              className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700"
+              className="rounded-md bg-muted px-2 py-1 text-xs text-foreground"
             >
               {feature}
             </span>
           ))}
           {property.features.length > 3 && (
-            <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">
+            <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
               +{property.features.length - 3} more
             </span>
           )}

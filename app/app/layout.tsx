@@ -1,18 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Figtree, Lora } from "next/font/google";
 import "./globals.css";
 import SolanaWalletProvider from "../provider/SolanaWalletProvider";
 import NavBar from "@/components/NavBar";
 import QueryProvider from "@/provider/QueryProvider";
 import Footer from "@/components/Footer";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Body text. Both faces are variable fonts, so every weight the app uses
+// comes from one file each.
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Headings (h1-h3, via `font-display` in globals.css).
+const lora = Lora({
+  variable: "--font-lora",
   subsets: ["latin"],
 });
 
@@ -53,10 +56,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh flex flex-col`}
-      >
+    // The font variables must sit on <html>: Tailwind sets the base font
+    // there, and a variable defined lower down would leave it undefined.
+    <html lang="en" className={`${figtree.variable} ${lora.variable}`}>
+      <body className="antialiased min-h-dvh flex flex-col">
         <QueryProvider>
           <SolanaWalletProvider>
             <NavBar />

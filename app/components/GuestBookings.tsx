@@ -115,8 +115,8 @@ const GuestBookingCard = ({
             <button
               onClick={() => onCancel(booking.apartmentId, checkInDay)}
               disabled={isThisOneCanceling}
-              className="p-2 border rounded-lg text-sm font-bold hover:bg-red-100 
-                 text-red-600 disabled:opacity-50 cursor-pointer"
+              className="p-2 border rounded-lg text-sm font-bold hover:bg-destructive/10 
+                 text-destructive disabled:opacity-50 cursor-pointer"
             >
               {isThisOneCanceling ? "Canceling..." : "Cancel Booking"}
             </button>
@@ -133,7 +133,7 @@ const GuestBookingCard = ({
       </div>
       <div className="mt-3 pt-3 border-t flex justify-between items-center">
         <span className="text-sm text-muted-foreground">Total paid</span>
-        <span className="text-lg font-bold text-primary">
+        <span className="text-lg font-bold text-foreground">
           {booking.amount} USDC
         </span>
       </div>
