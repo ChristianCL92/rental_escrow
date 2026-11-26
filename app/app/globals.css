@@ -250,11 +250,12 @@ body .wallet-adapter-modal-middle svg {
 }
 
 /*
- * The global focus outline (ring at 50%) is nearly invisible on the dark nav
- * and footer, so controls there get a solid light outline instead.
+ * The terracotta focus ring has low contrast on the dark ink of the nav and
+ * footer, so controls there get a solid light outline instead of the ring.
  * Unlayered on purpose so it also overrides the wallet adapter's own styles.
  */
 .focus-ring-on-dark :focus-visible {
   outline: 2px solid white;
   outline-offset: 3px;
+  box-shadow: none;
 }
