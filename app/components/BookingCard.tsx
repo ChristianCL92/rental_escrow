@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar } from "./ui/calendar";
 import { Button } from "./ui/button";
@@ -31,6 +31,7 @@ import {
 import { lastBookableDay, MAX_NIGHTS } from "@/lib/booking/limits";
 import { escrowCheckInTime, formatDeadline } from "@/lib/booking/escrow";
 import { PaymentOutcome } from "@/lib/booking/settle";
+import { nightsLabel } from "@/lib/booking/stay-summary";
 import NetworkBadge from "./NetworkBadge";
 import PaymentExplainer from "./booking/PaymentExplainer";
 import BookingProgress, {
@@ -43,11 +44,19 @@ import BookingConfirmation, {
 } from "./booking/BookingConfirmation";
 import ErrorDetails from "./booking/ErrorDetails";
 import WalletHelp from "./wallet/WalletHelp";
+import PhoneBookingBar from "./booking/PhoneBookingBar";
+import useMediaQuery, { MD_UP } from "@/hooks/useMediaQuery";
 
 interface BookingProps {
   pricePerNight: number;
   apartmentId: number;
 }
+
+/** Smooth scrolling, unless the guest asked their device for less motion. */
+const scrollBehavior = (): ScrollBehavior =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
 
 interface BookedDateRange {
   check_in_date: string;
@@ -62,6 +71,14 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
   const [step, setStep] = useState<ProgressStep | null>(null);
   const [bookingError, setBookingError] = useState<FriendlyError | null>(null);
   const [confirmed, setConfirmed] = useState<ConfirmedBooking | null>(null);
+  // Set when the guest books from the phone bar, far from this card, so
+  // the progress, error or confirmation is scrolled into view as it shows.
+  const [revealOutcome, setRevealOutcome] = useState(false);
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const outcomeRef = useRef<HTMLDivElement>(null);
+  // Two months side by side from tablets up; phones get one at a time. The
+  // server renders two, and phones switch before the card scrolls into view.
+  const wide = useMediaQuery(MD_UP, true);
   const {
     createEscrow,
     OWNER_ADDRESS,
@@ -117,6 +134,22 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
   const deadline =
     checkIn && nights > 0 ? formatDeadline(escrowCheckInTime(checkIn)) : null;
   const busy = step !== null && step !== "confirmed";
+  const bookDisabled = connected ? nights === 0 || busy : connecting;
+
+  useEffect(() => {
+    if (!revealOutcome || !(step || bookingError || confirmed)) return;
+    outcomeRef.current?.scrollIntoView({
+      block: "nearest",
+      behavior: scrollBehavior(),
+    });
+  }, [revealOutcome, step, bookingError, confirmed]);
+
+  const showCalendar = () => {
+    const calendar = calendarRef.current;
+    if (!calendar) return;
+    calendar.focus({ preventScroll: true });
+    calendar.scrollIntoView({ block: "start", behavior: scrollBehavior() });
+  };
 
   const refreshBookedDates = () =>
     queryClient.invalidateQueries({ queryKey: bookedDatesKey });
@@ -319,12 +352,18 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
           </AlertDescription>
         </Alert>
       )}
-      <div className="mt-4 flex justify-center">
+      <div
+        ref={calendarRef}
+        tabIndex={-1}
+        role="group"
+        aria-label="Choose your dates"
+        className="mt-4 flex scroll-mt-28 justify-center rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
         <Calendar
           mode="range"
           selected={dateRange}
           onSelect={setDateRange}
-          numberOfMonths={2}
+          numberOfMonths={wide ? 2 : 1}
           className="rounded-lg border"
           disabled={
             busy
@@ -356,7 +395,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">
-              {pricePerNight} USDC × {nights} night{nights > 1 ? "s" : ""}
+              {pricePerNight} USDC × {nightsLabel(nights)}
             </span>
             <span className="font-medium">{totalPrice} USDC</span>
           </div>
@@ -378,35 +417,60 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         </p>
       </div>
       <PaymentExplainer deadline={deadline} />
-      {busy && step && <BookingProgress step={step} totalUsdc={totalPrice} />}
-      {bookingError && (
-        <BookingErrorAlert
-          className="mt-4"
-          error={bookingError}
-          onDismiss={() => setBookingError(null)}
-        />
-      )}
-      {confirmed && (
-        <BookingConfirmation
-          booking={confirmed}
-          onDismiss={() => {
-            setConfirmed(null);
-            setStep(null);
-          }}
-        />
-      )}
+      <div
+        ref={outcomeRef}
+        className="scroll-mt-28 scroll-mb-[calc(var(--phone-booking-bar-height)+env(safe-area-inset-bottom)+1rem)]"
+      >
+        {busy && step && <BookingProgress step={step} totalUsdc={totalPrice} />}
+        {bookingError && (
+          <BookingErrorAlert
+            className="mt-4"
+            error={bookingError}
+            onDismiss={() => setBookingError(null)}
+          />
+        )}
+        {confirmed && (
+          <BookingConfirmation
+            booking={confirmed}
+            onDismiss={() => {
+              setConfirmed(null);
+              setStep(null);
+            }}
+          />
+        )}
+      </div>
       <p role="status" className="sr-only">
         {announcement}
       </p>
       <Button
         className="mt-4 w-full cursor-pointer"
         size="lg"
-        disabled={connected ? nights === 0 || busy : connecting}
-        onClick={handleBooking}
+        disabled={bookDisabled}
+        onClick={() => {
+          setRevealOutcome(false);
+          void handleBooking();
+        }}
       >
         {buttonContent}
       </Button>
       {!connected && <WalletHelp className="mt-3 text-center" />}
+      <PhoneBookingBar
+        pricePerNight={pricePerNight}
+        stay={
+          checkIn && checkOut && nights > 0
+            ? { checkIn, checkOut, nights, totalUsdc: totalPrice }
+            : null
+        }
+        onCheckDates={showCalendar}
+        onBook={() => {
+          setRevealOutcome(connected);
+          void handleBooking();
+        }}
+        bookDisabled={bookDisabled}
+        connected={connected}
+        connecting={connecting}
+        busy={busy}
+      />
     </div>
   );
 };
