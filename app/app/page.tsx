@@ -20,7 +20,7 @@ export default function Home() {
           {SHARED_AMENITIES.map((amenities) => (
             <div
               key={amenities}
-              className="rounded-lg border bg-slate-100 p-4 text-center"
+              className="rounded-lg border bg-card p-4 text-center"
             >
               {amenities}
             </div>

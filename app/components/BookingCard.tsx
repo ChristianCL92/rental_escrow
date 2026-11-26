@@ -277,7 +277,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
 
   return (
     <div
-      className="rounded-md border bg-white p-4 shadow-lg sm:p-6"
+      className="rounded-md border bg-card p-4 shadow-lg sm:p-6"
       data-testid="booking-card"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -341,7 +341,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         />
       </div>
       {nights > 0 && (
-        <div className="mt-4 space-y-2 rounded-lg bg-slate-100 p-4 text-sm">
+        <div className="mt-4 space-y-2 rounded-lg bg-muted p-4 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Check-in</span>
             <span className="font-medium">

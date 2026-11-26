@@ -450,14 +450,20 @@ test.describe("Booking limits in the calendar", () => {
 
   test("stays longer than 30 nights cannot be picked", async ({ page }) => {
     await page.locator(".rdp-button_next").click();
-    const days = page.locator("td:not([data-disabled]) button[data-day]");
+    // Outside days repeat a neighbouring month's dates in the other grid, so
+    // only in-month cells identify a single day.
+    const days = page.locator(
+      "td:not([data-disabled]):not([data-outside]) button[data-day]",
+    );
     await days.nth(0).click();
     // 31 nights later: the picker starts a new range instead.
     const start = await days.nth(0).getAttribute("data-day");
     const end = new Date(`${apiDay(start!)}T00:00:00Z`);
     end.setUTCDate(end.getUTCDate() + 31);
     await page.locator(".rdp-button_next").click();
-    await page.locator(`button[data-day="${dataDay(end)}"]`).click();
+    await page
+      .locator(`td:not([data-outside]) button[data-day="${dataDay(end)}"]`)
+      .click();
     await expect(page.getByText(/× 31 nights/)).toHaveCount(0);
   });
 

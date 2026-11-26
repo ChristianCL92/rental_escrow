@@ -3,12 +3,7 @@ import { cn } from "@/lib/utils";
 import { HOLD_TTL_MS } from "@/lib/booking/auth-message";
 
 export type ProgressStep =
-  | "signing"
-  | "reserving"
-  | "account"
-  | "payment"
-  | "confirming"
-  | "confirmed";
+  "signing" | "reserving" | "account" | "payment" | "confirming" | "confirmed";
 
 const STEPS: { id: Exclude<ProgressStep, "confirming">; label: string }[] = [
   { id: "signing", label: "Sign to reserve" },
@@ -87,9 +82,9 @@ const BookingProgress = ({ step, totalUsdc }: BookingProgressProps) => {
                 className={cn(
                   "flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                   state === "done" && "bg-emerald-700 text-white",
-                  state === "current" && "bg-primary text-primary-foreground",
+                  state === "current" && "bg-inverse text-inverse-foreground",
                   state === "todo" &&
-                    "bg-white text-slate-600 ring-1 ring-slate-300",
+                    "bg-card text-muted-foreground ring-1 ring-input",
                 )}
               >
                 {state === "done" ? (
@@ -103,8 +98,8 @@ const BookingProgress = ({ step, totalUsdc }: BookingProgressProps) => {
               <span
                 className={cn(
                   state === "current" && "font-semibold text-foreground",
-                  state === "done" && "text-slate-700",
-                  state === "todo" && "text-slate-600",
+                  state === "done" && "text-foreground",
+                  state === "todo" && "text-muted-foreground",
                 )}
               >
                 {s.label}
@@ -120,7 +115,7 @@ const BookingProgress = ({ step, totalUsdc }: BookingProgressProps) => {
           );
         })}
       </ol>
-      <p className="mt-3 border-t pt-3 text-sm text-slate-700">
+      <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">
         {stepHint(step, totalUsdc)}
       </p>
     </div>

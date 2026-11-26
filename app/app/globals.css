@@ -1,123 +1,100 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/*
+ * El Solar has no dark theme. Generated shadcn components still carry
+ * `dark:` utilities; scoping the variant to a `.dark` ancestor that is never
+ * set keeps them inert instead of following the OS colour scheme.
+ */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-sans: var(--font-figtree);
+  --font-display: var(--font-lora);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-inverse: var(--inverse);
+  --color-inverse-foreground: var(--inverse-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/*
+ * Palette A "Andes", sampled from El Solar's own walls, forest, brick and sun.
+ * Each colour has one job:
+ *   ground  #F6F1E7  the page
+ *   ink     #1C2A21  text, and the dark grounds of the nav and footer
+ *   accent  #A8432A  brick terracotta: every clickable thing (buttons, links,
+ *                    focus). shadcn calls this role "primary"; its "accent"
+ *                    role below is only the quiet hover surface.
+ *   highlight #F5C518 the logo sun, only ever on dark (ink) grounds; it fails
+ *                    as text or a shape on light grounds (1.45:1).
+ *   destructive #B42318 crimson, kept apart from the terracotta accent.
+ * WCAG 2.x contrast of the text pairs in use (AA needs 4.5:1):
+ *   ink on ground 13.30, on card 14.61, on muted 12.18
+ *   muted-foreground on ground 6.02, on card 6.61, on muted 5.51
+ *   white on accent 6.00; accent on ground 5.33, on card 5.85
+ *   white on destructive 6.57; destructive on ground 5.84, on card 6.42
+ *   cream on ink 14.61; ink on highlight 9.19
+ *   input border on ground 3.19, on card 3.51 (UI shapes need 3:1)
+ */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
-}
-
-.dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --background: #f6f1e7;
+  --foreground: #1c2a21;
+  --card: #fffcf5;
+  --card-foreground: #1c2a21;
+  --popover: #fffcf5;
+  --popover-foreground: #1c2a21;
+  --primary: #a8432a;
+  --primary-foreground: #ffffff;
+  --secondary: #eee7da;
+  --secondary-foreground: #1c2a21;
+  --muted: #eee7da;
+  --muted-foreground: #545e52;
+  --accent: #eee7da;
+  --accent-foreground: #1c2a21;
+  --destructive: #b42318;
+  --border: #e3dacb;
+  --input: #8f8676;
+  --ring: #a8432a;
+  --inverse: #1c2a21;
+  --inverse-foreground: #fffcf5;
+  --highlight: #f5c518;
+  --highlight-foreground: #1c2a21;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
   }
 }
 
@@ -169,7 +146,7 @@ body .wallet-adapter-dropdown-list {
   background: var(--popover);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: 0 10px 30px rgb(15 23 42 / 0.12);
+  box-shadow: 0 10px 30px rgb(28 42 33 / 0.12);
   font-family: var(--font-sans);
   padding: 0.25rem;
   grid-row-gap: 0;
@@ -188,7 +165,7 @@ body .wallet-adapter-dropdown-list-item:not([disabled]):hover {
 }
 
 body .wallet-adapter-modal-overlay {
-  background: rgb(15 23 42 / 0.6);
+  background: rgb(28 42 33 / 0.6);
 }
 
 body .wallet-adapter-modal-wrapper {
@@ -197,7 +174,7 @@ body .wallet-adapter-modal-wrapper {
   font-family: var(--font-sans);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  box-shadow: 0 24px 48px rgb(15 23 42 / 0.2);
+  box-shadow: 0 24px 48px rgb(28 42 33 / 0.2);
 }
 
 body .wallet-adapter-modal-title {
@@ -273,11 +250,12 @@ body .wallet-adapter-modal-middle svg {
 }
 
 /*
- * The global focus outline (ring at 50%) is nearly invisible on the dark nav
- * and footer, so controls there get a solid light outline instead.
+ * The terracotta focus ring has low contrast on the dark ink of the nav and
+ * footer, so controls there get a solid light outline instead of the ring.
  * Unlayered on purpose so it also overrides the wallet adapter's own styles.
  */
 .focus-ring-on-dark :focus-visible {
   outline: 2px solid white;
   outline-offset: 3px;
+  box-shadow: none;
 }

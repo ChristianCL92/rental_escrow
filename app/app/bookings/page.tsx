@@ -1,5 +1,11 @@
 "use client";
-import { CircleAlert, Loader2, ShieldCheck, Wallet } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleAlert,
+  Loader2,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
 import LoadingBookingSkeleton from "./loading";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +14,6 @@ import useGuestBookings from "@/hooks/useGuestBookings";
 import GuestBookings from "@/components/GuestBookings";
 import { useState } from "react";
 import useBookingAPI from "@/hooks/useBookingAPI";
-import { IoMdArrowBack } from "react-icons/io";
 import ConnectWalletButton from "@/components/wallet/ConnectWalletButton";
 import WalletHelp from "@/components/wallet/WalletHelp";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -80,13 +85,13 @@ export const GuestPage = () => {
         <div>
           <Button asChild variant="outline" size="sm">
             <Link href="/" aria-label="Back to properties">
-              <IoMdArrowBack aria-hidden="true" />
+              <ArrowLeft aria-hidden="true" />
             </Link>
           </Button>
         </div>
         <div className="mx-auto max-w-md text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
-            <Wallet className="h-8 w-8 text-slate-600" />
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+            <Wallet className="h-8 w-8 text-muted-foreground" />
           </div>
           <h1 className="text-2xl font-bold">My Bookings</h1>
           <p className="mt-2 text-muted-foreground">
@@ -107,15 +112,15 @@ export const GuestPage = () => {
         <div>
           <Button asChild variant="outline" size="sm">
             <Link href="/" aria-label="Back to properties">
-              <IoMdArrowBack aria-hidden="true" />
+              <ArrowLeft aria-hidden="true" />
             </Link>
           </Button>
         </div>
         <div className="mx-auto max-w-md text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
             <ShieldCheck
               aria-hidden="true"
-              className="h-8 w-8 text-slate-600"
+              className="h-8 w-8 text-muted-foreground"
             />
           </div>
           <h1 className="text-2xl font-bold">My Bookings</h1>

@@ -10,9 +10,9 @@ import WalletMenu from "./wallet/WalletMenu";
 const NavBar = () => {
   const pathName = usePathname();
   return (
-    <nav className="focus-ring-on-dark fixed top-0 z-40 w-full bg-gray-900">
+    <nav className="focus-ring-on-dark fixed top-0 z-40 w-full bg-inverse text-inverse-foreground">
       {/* Phones have no room for the badge in the bar, so it spans the top. */}
-      <NetworkBadge variant="strip" className="md:hidden" />
+      <NetworkBadge variant="strip" ground="dark" className="md:hidden" />
       <div className="flex items-center justify-between px-4 py-3 sm:px-6 md:py-6">
         <div className="flex items-center gap-2 sm:gap-5">
           <Link
@@ -20,18 +20,15 @@ const NavBar = () => {
             className="flex items-center gap-2 rounded-sm sm:gap-5"
           >
             <Image src={LogoElSolar} alt="" width={45} />
-            <span className="max-[768px]:sr-only text-lg font-bold text-white sm:text-2xl">
+            <span className="max-[768px]:sr-only text-lg font-bold sm:text-2xl">
               El Solar
             </span>
           </Link>
-          <NetworkBadge className="max-md:hidden" />
+          <NetworkBadge ground="dark" className="max-md:hidden" />
         </div>
         <div className="flex items-center gap-3 sm:gap-10">
           {pathName !== "/bookings" && (
-            <Link
-              href={"/bookings"}
-              className="rounded-sm font-bold text-white text-md"
-            >
+            <Link href={"/bookings"} className="rounded-sm font-bold text-md">
               My Bookings
             </Link>
           )}

@@ -46,7 +46,7 @@ const PaymentExplainer = ({ deadline }: PaymentExplainerProps) => {
   return (
     <section
       aria-labelledby={headingId}
-      className="mt-4 rounded-lg border bg-slate-50 p-4"
+      className="mt-4 rounded-lg border bg-background p-4"
     >
       <h3
         id={headingId}
@@ -55,12 +55,12 @@ const PaymentExplainer = ({ deadline }: PaymentExplainerProps) => {
         <ShieldCheck aria-hidden="true" className="size-4 text-emerald-700" />
         How payment works
       </h3>
-      <ol className="mt-3 space-y-2 text-sm text-slate-700">
+      <ol className="mt-3 space-y-2 text-sm text-foreground">
         {lines.map((line, i) => (
           <li key={i} className="flex gap-2.5">
             <span
               aria-hidden="true"
-              className="mt-px flex size-5 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-900 ring-1 ring-slate-300"
+              className="mt-px flex size-5 shrink-0 items-center justify-center rounded-full bg-card text-xs font-semibold text-foreground ring-1 ring-input"
             >
               {i + 1}
             </span>
