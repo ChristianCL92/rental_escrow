@@ -93,7 +93,7 @@ test.describe("Phone booking bar", () => {
     await page.keyboard.press("Escape");
 
     // The summary leads back to the calendar to change the dates.
-    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await expect(calendar(page)).not.toBeInViewport();
     await bar(page)
       .getByRole("button", { name: /change dates/ })
@@ -106,8 +106,12 @@ test.describe("Phone booking bar", () => {
     page,
   }) => {
     await page.goto("/properties/room-001");
+    // The page scrolls smoothly (globals.css); jump so the measure is final.
     await page.evaluate(() =>
-      window.scrollTo(0, document.documentElement.scrollHeight),
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: "instant",
+      }),
     );
 
     const footer = (await page.locator("footer").boundingBox())!;
@@ -135,7 +139,7 @@ test.describe("Phone booking bar", () => {
 
     await selectTwoNights(page);
     await setWalletMode(page, "hold");
-    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await bar(page).getByRole("button", { name: "Book", exact: true }).tap();
 
     // The card's own progress comes into view; the bar waits with it.
