@@ -66,14 +66,14 @@ const PhoneBookingBar = ({
     <div
       data-phone-booking-bar=""
       data-testid="phone-booking-bar"
-      className="fixed inset-x-0 bottom-0 z-30 bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_0_var(--color-border),0_-4px_16px_-4px_rgb(0_0_0/0.12)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 bg-card pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_0_var(--color-border),0_-4px_16px_-4px_color-mix(in_srgb,var(--color-foreground)_12%,transparent)] md:hidden"
     >
       <div className="flex h-(--phone-booking-bar-height) items-center justify-between gap-3 px-4">
         {stay ? (
           <button
             type="button"
             onClick={onCheckDates}
-            className="flex min-h-11 min-w-0 cursor-pointer flex-col justify-center rounded-md text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className="flex min-h-11 min-w-0 cursor-pointer flex-col justify-center rounded-md text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           >
             <span className="text-base leading-tight font-bold">
               {stay.totalUsdc} USDC
@@ -95,7 +95,7 @@ const PhoneBookingBar = ({
         {stay ? (
           <Button
             size="lg"
-            className="h-11 min-w-24 cursor-pointer"
+            className="h-11 min-w-24 cursor-pointer focus-visible:ring-offset-card"
             disabled={bookDisabled}
             onClick={onBook}
           >
@@ -104,7 +104,7 @@ const PhoneBookingBar = ({
         ) : (
           <Button
             size="lg"
-            className="h-11 cursor-pointer"
+            className="h-11 cursor-pointer focus-visible:ring-offset-card"
             onClick={onCheckDates}
           >
             <CalendarDays aria-hidden="true" />
