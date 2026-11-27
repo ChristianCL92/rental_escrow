@@ -14,7 +14,51 @@ test.describe("Home page", () => {
 
   test("page loads with a single main heading", async ({ page }) => {
     await expect(page.locator("h1")).toHaveCount(1);
-    await expect(page.locator("h1")).toContainText("reconnect with nature");
+    await expect(page.locator("h1")).toHaveText(
+      "Backpacker & holistic retreat",
+    );
+  });
+
+  test("hero shows the photo, where El Solar is, and one action", async ({
+    page,
+  }) => {
+    const hero = page.getByRole("region", {
+      name: "Backpacker & holistic retreat",
+    });
+    const photo = hero.getByRole("img", { name: /pool.*EL SOLAR sign/ });
+    await expect(photo).toBeVisible();
+    // The photo is the largest paint, so it must not wait for lazy loading.
+    await expect(photo).not.toHaveAttribute("loading", "lazy");
+    await expect(hero.getByText("Colombian Andes")).toBeVisible();
+    await expect(hero.getByRole("link", { name: "Check dates" })).toBeVisible();
+    // Browsing needs no wallet, so the hero offers none.
+    await expect(hero.getByRole("button")).toHaveCount(0);
+    await expect(hero.getByText(/wallet/i)).toHaveCount(0);
+  });
+
+  test("Check dates scrolls to the stays, clear of the nav", async ({
+    page,
+  }) => {
+    await page.getByRole("link", { name: "Check dates" }).click();
+    await expect(page).toHaveURL(/#stays$/);
+    const heading = page.getByRole("heading", { name: "Stays", level: 2 });
+    await expect(heading).toBeInViewport();
+    // Smooth scrolling animates, so wait for it to settle before measuring.
+    await expect
+      .poll(async () => {
+        const navBottom = (await page.locator("nav").boundingBox())!;
+        const top = (await heading.boundingBox())!.y;
+        return top >= navBottom.y + navBottom.height;
+      })
+      .toBe(true);
+  });
+
+  test("hero leaves a peek of the stays above the fold", async ({ page }) => {
+    const viewport = page.viewportSize()!;
+    const hero = (await page
+      .getByRole("region", { name: "Backpacker & holistic retreat" })
+      .boundingBox())!;
+    expect(hero.y + hero.height).toBeLessThan(viewport.height);
   });
 
   test("brand fonts render: Figtree for text, Lora for headings", async ({

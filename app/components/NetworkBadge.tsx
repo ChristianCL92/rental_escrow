@@ -38,7 +38,7 @@ const NetworkBadge = ({
           : "bg-amber-50 text-amber-950 ring-1 ring-amber-200 ring-inset",
         variant === "pill"
           ? "w-fit shrink-0 rounded-full px-2.5 py-1"
-          : "w-full px-4 py-1",
+          : "flex w-full px-4 py-1",
         className,
       )}
     >

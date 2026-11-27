@@ -5,6 +5,7 @@ import SolanaWalletProvider from "../provider/SolanaWalletProvider";
 import NavBar from "@/components/NavBar";
 import QueryProvider from "@/provider/QueryProvider";
 import Footer from "@/components/Footer";
+import { IS_TEST_NETWORK } from "@/lib/solana/network";
 
 // Body text. Both faces are variable fonts, so every weight the app uses
 // comes from one file each.
@@ -58,12 +59,19 @@ export default function RootLayout({
   return (
     // The font variables must sit on <html>: Tailwind sets the base font
     // there, and a variable defined lower down would leave it undefined.
-    <html lang="en" className={`${figtree.variable} ${lora.variable}`}>
+    // data-scroll-behavior lets Next turn smooth scrolling off during route
+    // changes; data-test-network sizes the nav's phone strip (globals.css).
+    <html
+      lang="en"
+      className={`${figtree.variable} ${lora.variable}`}
+      data-scroll-behavior="smooth"
+      data-test-network={IS_TEST_NETWORK || undefined}
+    >
       <body className="antialiased min-h-dvh flex flex-col">
         <QueryProvider>
           <SolanaWalletProvider>
             <NavBar />
-            <main className="pt-20 pb-20 flex-1">{children}</main>
+            <main className="pt-(--nav-height) pb-20 flex-1">{children}</main>
             <Footer />
           </SolanaWalletProvider>
         </QueryProvider>
