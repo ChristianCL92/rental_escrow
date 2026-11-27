@@ -259,3 +259,20 @@ body .wallet-adapter-modal-middle svg {
   outline-offset: 3px;
   box-shadow: none;
 }
+
+/*
+ * The phone booking bar (components/booking/PhoneBookingBar.tsx) is fixed to
+ * the bottom of property pages below the md breakpoint. While it is on the
+ * page, the body gets the bar's height as bottom padding, so the end of the
+ * page and the footer can always be scrolled clear of it.
+ */
+:root {
+  --phone-booking-bar-height: 4.25rem;
+}
+@media (width < 48rem) {
+  body:has([data-phone-booking-bar]) {
+    padding-bottom: calc(
+      var(--phone-booking-bar-height) + env(safe-area-inset-bottom)
+    );
+  }
+}

@@ -34,12 +34,28 @@ test.describe("Property detail page", () => {
     await expect(page.locator("text=Book your stay")).toBeVisible();
   });
 
-  test("calendar renders with 2 months", async ({ page }) => {
+  test("calendar renders with 2 months from tablet width up", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto("/properties/room-001");
     await page.waitForSelector("text=Book your stay");
 
     const monthCaptions = page.locator(".rdp-month_caption");
     await expect(monthCaptions).toHaveCount(2);
+  });
+
+  test("calendar renders one month at a time on phones", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/properties/room-001");
+    await page.waitForSelector("text=Book your stay");
+
+    const monthCaptions = page.locator(".rdp-month_caption");
+    await expect(monthCaptions).toHaveCount(1);
+    const first = await monthCaptions.textContent();
+    await page.getByRole("button", { name: "Go to the Next Month" }).click();
+    await expect(monthCaptions).toHaveCount(1);
+    await expect(monthCaptions).not.toHaveText(first!);
   });
 
   test('book button says "Connect wallet to pay" when disconnected', async ({
