@@ -357,7 +357,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         tabIndex={-1}
         role="group"
         aria-label="Choose your dates"
-        className="mt-4 flex scroll-mt-28 justify-center rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="mt-4 flex scroll-mt-28 justify-center rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
       >
         <Calendar
           mode="range"
