@@ -1,3 +1,5 @@
+import { formatUsdc } from "@/lib/money";
+
 /**
  * Turns the raw errors a booking or cancellation can throw (API responses,
  * wallet adapters, web3.js, Anchor, the SPL token and system programs) into
@@ -268,7 +270,7 @@ export const describeBookingError = (
     return {
       title: "Not enough USDC in this wallet",
       message: `${
-        totalUsdc ? `This stay costs ${totalUsdc} USDC. ` : ""
+        totalUsdc ? `This stay costs ${formatUsdc(totalUsdc)}. ` : ""
       }Add USDC to this wallet and try again. No USDC was charged.`,
       detail,
       action: "get-usdc",

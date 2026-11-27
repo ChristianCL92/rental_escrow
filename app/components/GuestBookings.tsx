@@ -1,5 +1,9 @@
 "use client";
-import { getPriceByApartmentId } from "@/lib/properties";
+import {
+  getPriceByApartmentId,
+  getPropertyNameByApartmentId,
+} from "@/lib/properties";
+import { formatUsdc } from "@/lib/money";
 import { format, addDays } from "date-fns";
 import {
   CalendarCheck,
@@ -79,7 +83,9 @@ const GuestBookingCard = ({
   return (
     <div className="rounded-lg border p-4 transition-shadow hover:shadow-lg">
       <div className="flex justify-between items-start mb-3">
-        <p className="font-semibold">Apartment #{booking.apartmentId}</p>
+        <p className="font-semibold">
+          {getPropertyNameByApartmentId(booking.apartmentId)}
+        </p>
         <StatusBadge booking={booking} now={now} />
       </div>
       <div className="space-y-1 text-sm text-muted-foreground">
@@ -134,7 +140,7 @@ const GuestBookingCard = ({
       <div className="mt-3 pt-3 border-t flex justify-between items-center">
         <span className="text-sm text-muted-foreground">Total paid</span>
         <span className="text-lg font-bold text-foreground">
-          {booking.amount} USDC
+          {formatUsdc(booking.amount)}
         </span>
       </div>
     </div>

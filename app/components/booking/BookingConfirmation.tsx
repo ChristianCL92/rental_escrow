@@ -7,6 +7,7 @@ import { CircleCheck, ExternalLink } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { explorerUrl } from "@/lib/solana/network";
+import { formatUsdc } from "@/lib/money";
 import DismissButton from "./DismissButton";
 
 export interface ConfirmedBooking {
@@ -46,7 +47,7 @@ const BookingConfirmation = ({
   const rows: [string, string][] = [
     ["Dates", dates],
     ["Nights", String(booking.nights)],
-    ["Held in escrow", `${booking.totalUsdc} USDC, until check-in`],
+    ["Held in escrow", `${formatUsdc(booking.totalUsdc)}, until check-in`],
     ["Free cancellation", `Until ${booking.deadline}`],
   ];
 

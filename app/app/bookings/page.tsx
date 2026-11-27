@@ -188,7 +188,7 @@ export const GuestPage = () => {
         <div className="flex gap-2">
           <div>
             <Button onClick={() => refetch()} className="cursor-pointer">
-              Refetch
+              Refresh
             </Button>
           </div>
           <div>

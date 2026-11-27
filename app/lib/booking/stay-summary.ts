@@ -1,4 +1,5 @@
 import { format, isSameMonth } from "date-fns";
+import { formatUsdc } from "@/lib/money";
 
 /** "1 night", "3 nights". */
 export const nightsLabel = (nights: number): string =>
@@ -24,4 +25,4 @@ export const spokenStaySummary = (
   nights: number,
   totalUsdc: number,
 ): string =>
-  `${format(checkIn, "MMMM d")} to ${format(checkOut, "MMMM d")}, ${nightsLabel(nights)}, ${totalUsdc} USDC total`;
+  `${format(checkIn, "MMMM d")} to ${format(checkOut, "MMMM d")}, ${nightsLabel(nights)}, ${formatUsdc(totalUsdc)} total`;

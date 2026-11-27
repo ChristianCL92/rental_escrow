@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { properties } from "@/lib/properties";
+import { formatUsdc } from "@/lib/money";
 // Type-only, so the zod schema it comes from is erased at build time and
 // never reaches the client bundle. Keep this an `import type`.
 import type { MarketingCopy } from "@/lib/marketing/schema";
@@ -245,7 +246,7 @@ const MarketingPage = () => {
                     <SelectItem key={property.id} value={property.id}>
                       <span className="font-medium">{property.name}</span>
                       <span className="text-muted-foreground">
-                        {property.pricePerNight} USDC / night
+                        {formatUsdc(property.pricePerNight)} / night
                       </span>
                     </SelectItem>
                   ))}

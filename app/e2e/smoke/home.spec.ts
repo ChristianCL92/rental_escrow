@@ -95,28 +95,145 @@ test.describe("Home page", () => {
   });
 
   test("all 5 property cards rendered", async ({ page }) => {
+    const stays = page.getByRole("region", { name: "Stays" });
     const propertyNames = [
-      "Room 001",
-      "Room 002",
-      "Room 003",
-      "Room 004",
-      "Apartment Cave",
+      "Room 01",
+      "Room 02",
+      "Room 03",
+      "Room 04",
+      "Cave apartment",
     ];
 
     for (const name of propertyNames) {
-      await expect(page.locator(`text=${name}`).first()).toBeVisible();
+      await expect(
+        stays.getByRole("heading", { name, level: 3 }),
+      ).toBeVisible();
+    }
+    await expect(page.getByTestId("property-card")).toHaveCount(5);
+  });
+
+  test("each room has its own description", async ({ page }) => {
+    const cards = page.getByTestId("property-card");
+    await expect(cards.nth(0)).toContainText(
+      "Panoramic room with a view of the mountain range and the nature reserve.",
+    );
+    await expect(cards.nth(1)).toContainText(
+      "Panoramic room with a balcony and a view of the mountain range.",
+    );
+    await expect(
+      page.getByText("Cozy room with double bed and private bathroom."),
+    ).toHaveCount(0);
+  });
+
+  test("room cards show the price as 30 USDC / night", async ({ page }) => {
+    const rooms = page.getByRole("list", { name: "Rooms" });
+    await expect(rooms.getByText("30 USDC / night")).toHaveCount(4);
+  });
+
+  test("Cave apartment shows 75 USDC / night", async ({ page }) => {
+    const apartments = page.getByRole("list", { name: "Apartments" });
+    await expect(apartments.getByText("75 USDC / night")).toBeVisible();
+  });
+
+  test("type labels read in title case", async ({ page }) => {
+    const rooms = page.getByRole("list", { name: "Rooms" });
+    await expect(rooms.getByText("Room", { exact: true })).toHaveCount(4);
+    const apartments = page.getByRole("list", { name: "Apartments" });
+    await expect(
+      apartments.getByText("Apartment", { exact: true }),
+    ).toBeVisible();
+  });
+
+  test("photos sit flush with the top of the card, in a 4:3 shape", async ({
+    page,
+  }) => {
+    const cards = page.getByTestId("property-card");
+    for (let i = 0; i < 5; i++) {
+      const card = (await cards.nth(i).boundingBox())!;
+      const photo = (await cards.nth(i).getByRole("img").boundingBox())!;
+      // Only the 1px card border sits above the photo.
+      expect(photo.y - card.y).toBeLessThanOrEqual(1);
+      expect(photo.width / photo.height).toBeCloseTo(4 / 3, 1);
     }
   });
 
-  test("room cards show 30 USDC price", async ({ page }) => {
-    const priceLabels = page.locator("text=30 USDC");
-    await expect(priceLabels.first()).toBeVisible();
-    const count = await priceLabels.count();
-    expect(count).toBeGreaterThanOrEqual(4);
+  test("the four rooms fill one row on laptops, the apartment its own row", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const rooms = page
+      .getByRole("list", { name: "Rooms" })
+      .getByRole("listitem");
+    await expect(rooms).toHaveCount(4);
+    const tops = await Promise.all(
+      [0, 1, 2, 3].map(async (i) => (await rooms.nth(i).boundingBox())!.y),
+    );
+    expect(new Set(tops).size).toBe(1);
+
+    const roomRow = (await page
+      .getByRole("list", { name: "Rooms" })
+      .boundingBox())!;
+    const cave = (await page
+      .getByRole("list", { name: "Apartments" })
+      .getByTestId("property-card")
+      .boundingBox())!;
+    // The apartment spans the whole row under the rooms: no empty slot.
+    expect(cave.y).toBeGreaterThan(roomRow.y + roomRow.height);
+    expect(Math.abs(cave.width - roomRow.width)).toBeLessThan(1);
   });
 
-  test("Apartment Cave shows 75 USDC price", async ({ page }) => {
-    await expect(page.locator("text=75 USDC").first()).toBeVisible();
+  test("cards have no buttons; each is one link named after the stay", async ({
+    page,
+  }) => {
+    const cards = page.getByTestId("property-card");
+    await expect(cards.getByRole("button")).toHaveCount(0);
+    await expect(page.getByText("View & Book")).toHaveCount(0);
+    for (let i = 0; i < 5; i++) {
+      await expect(cards.nth(i).getByRole("link")).toHaveCount(1);
+      await expect(cards.nth(i).getByText("View dates")).toBeVisible();
+    }
+    await expect(
+      cards.first().getByRole("link", { name: "Room 01" }),
+    ).toHaveAttribute("href", "/properties/room-001");
+  });
+
+  test("clicking anywhere on a card opens the stay", async ({ page }) => {
+    // A point on the photo, far from the name: the name's link is
+    // stretched over the whole card, so it takes the click.
+    await page
+      .getByTestId("property-card")
+      .filter({ hasText: "Cave apartment" })
+      .click({ position: { x: 24, y: 48 } });
+    // A navigation, so wait as long as one may take: the dev server can
+    // still be compiling the page on its first visit.
+    await page.waitForURL(/\/properties\/apartment-cave$/);
+    await expect(
+      page.getByRole("heading", { name: "Cave apartment", level: 1 }),
+    ).toBeVisible();
+  });
+
+  test("a hovered card lifts and zooms its photo", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, "Touch screens have no hover.");
+    const card = page.getByTestId("property-card").first();
+    await card.hover();
+    await expect
+      .poll(() =>
+        card.evaluate((el) => ({
+          lift: getComputedStyle(el).translate,
+          zoom: getComputedStyle(el.querySelector("img")!).scale,
+        })),
+      )
+      .toEqual({ lift: "0px -4px", zoom: "1.04" });
+  });
+
+  test("the footer reads © year El Solar", async ({ page }) => {
+    await expect(page.locator("footer")).toContainText(
+      `© ${new Date().getFullYear()} El Solar`,
+    );
+    await expect(page.locator("footer")).not.toContainText("Copyright");
   });
 
   test("shared amenities section present", async ({ page }) => {
@@ -128,10 +245,7 @@ test.describe("Home page", () => {
   });
 
   test("property cards link to detail pages", async ({ page }) => {
-    const viewButtons = page.locator("text=View & Book");
-    await expect(viewButtons.first()).toBeVisible();
-
-    await viewButtons.first().click();
-    await expect(page).toHaveURL(/\/properties\//);
+    await page.getByTestId("property-card").first().click();
+    await page.waitForURL(/\/properties\/room-001$/);
   });
 });

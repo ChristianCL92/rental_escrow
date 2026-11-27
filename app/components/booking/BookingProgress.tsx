@@ -1,9 +1,15 @@
 import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HOLD_TTL_MS } from "@/lib/booking/auth-message";
+import { formatUsdc } from "@/lib/money";
 
 export type ProgressStep =
-  "signing" | "reserving" | "account" | "payment" | "confirming" | "confirmed";
+  | "signing"
+  | "reserving"
+  | "account"
+  | "payment"
+  | "confirming"
+  | "confirmed";
 
 const STEPS: { id: Exclude<ProgressStep, "confirming">; label: string }[] = [
   { id: "signing", label: "Sign to reserve" },
@@ -22,7 +28,7 @@ export const stepHint = (step: ProgressStep, totalUsdc: number): string => {
     case "account":
       return "Your wallet asks you to approve a setup step. It creates the escrow account for this stay and uses a little SOL - no USDC moves yet.";
     case "payment":
-      return `Your wallet asks a second time. This approval moves ${totalUsdc} USDC into escrow. It is the only payment, not a double charge.`;
+      return `Your wallet asks a second time. This approval moves ${formatUsdc(totalUsdc)} into escrow. It is the only payment, not a double charge.`;
     case "confirming":
       return "Confirming your payment... The network is slow to confirm it. This can take a minute or two, and there is nothing else you need to do.";
     case "confirmed":

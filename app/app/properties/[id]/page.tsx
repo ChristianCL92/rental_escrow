@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { getPropertyById } from "@/lib/properties";
+import { ArrowLeft, BedDouble, House, Users } from "lucide-react";
+import { getPropertyById, PROPERTY_TYPE_LABELS } from "@/lib/properties";
 import { Button } from "@/components/ui/button";
 import BookingCard from "@/components/BookingCard";
 import ImageCarousel from "@/components/ImageCarousel";
@@ -29,28 +29,31 @@ const PropertyPage = async ({ params }: PropertyPageProps) => {
         <div>
           <ImageCarousel images={property.images} label={property.name} />
           <div className="mt-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="rounded-full bg-inverse px-3 py-1 text-xs font-medium text-inverse-foreground">
-                  {property.type}
-                </span>
-                <h1 className="mt-3 text-3xl font-bold">{property.name}</h1>
-                <p className="text-muted-foreground">
-                  Up to {property.maxGuests} guests
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-3xl font-bold text-foreground">
-                  {property.pricePerNight} USDC
-                </p>
-                <p className="text-sm text-muted-foreground">per night</p>
-              </div>
-            </div>
+            <h1 className="text-3xl font-bold">{property.name}</h1>
+            {/* The price lives in the booking card, next to the dates it
+                multiplies with; here are the facts that decide the stay. */}
+            <ul
+              aria-label="At a glance"
+              className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground"
+            >
+              <li className="flex items-center gap-1.5">
+                <Users aria-hidden="true" className="size-4" />
+                Up to {property.maxGuests} guests
+              </li>
+              <li className="flex items-center gap-1.5">
+                <BedDouble aria-hidden="true" className="size-4" />
+                {property.beds}
+              </li>
+              <li className="flex items-center gap-1.5">
+                <House aria-hidden="true" className="size-4" />
+                {PROPERTY_TYPE_LABELS[property.type]}
+              </li>
+            </ul>
 
             <p className="mt-4 text-muted-foreground">{property.description}</p>
           </div>
           <div className="mt-6">
-            <h2 className="text-xl font-semibold">Room Features</h2>
+            <h2 className="text-xl font-semibold">Features</h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {property.features.map((feature) => (
                 <span
