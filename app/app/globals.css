@@ -84,9 +84,42 @@
   --highlight-foreground: #1c2a21;
 }
 
+/*
+ * The fixed nav's height, in one place. The nav sizes itself from these
+ * values and <main> is offset by --nav-height, so no page starts under the
+ * nav. On phones a test-network strip spans the top of the nav (see
+ * NavBar.tsx); <html data-test-network> turns its height on.
+ */
+:root {
+  --nav-bar-height: 4.5rem;
+  --network-strip-height: 0rem;
+  --nav-height: calc(var(--nav-bar-height) + var(--network-strip-height));
+}
+
+@media (width >= 48rem) {
+  :root {
+    --nav-bar-height: 6rem;
+  }
+}
+
+@media (width < 48rem) {
+  :root[data-test-network] {
+    --network-strip-height: 1.5rem;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring;
+  }
+  html {
+    /* In-page links (the hero's "Check dates") land below the fixed nav. */
+    scroll-padding-top: var(--nav-height);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
   body {
     @apply bg-background text-foreground;

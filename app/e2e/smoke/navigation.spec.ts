@@ -39,6 +39,28 @@ test.describe("Navigation", () => {
     await expect(page).toHaveURL("/");
   });
 
+  for (const { name, width, height } of [
+    { name: "phone", width: 390, height: 844 },
+    { name: "desktop", width: 1440, height: 900 },
+  ]) {
+    test(`pages start below the fixed nav on ${name}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      for (const path of ["/", "/properties/room-001", "/bookings"]) {
+        await page.goto(path);
+        // The site nav comes first; the booking calendar has a <nav> too.
+        const nav = (await page.locator("nav").first().boundingBox())!;
+        const content = (await page
+          .getByRole("main")
+          .locator("> *")
+          .first()
+          .boundingBox())!;
+        expect(content.y, path).toBeGreaterThanOrEqual(nav.y + nav.height);
+        // ...and directly below it, with no gap over the full-bleed hero.
+        expect(content.y - (nav.y + nav.height), path).toBeLessThan(1);
+      }
+    });
+  }
+
   test("wallet connect button present", async ({ page }) => {
     await page.goto("/");
 
