@@ -32,6 +32,8 @@ import { lastBookableDay, MAX_NIGHTS } from "@/lib/booking/limits";
 import { escrowCheckInTime, formatDeadline } from "@/lib/booking/escrow";
 import { PaymentOutcome } from "@/lib/booking/settle";
 import { nightsLabel } from "@/lib/booking/stay-summary";
+import { formatUsdc } from "@/lib/money";
+import PricePerNight from "./PricePerNight";
 import NetworkBadge from "./NetworkBadge";
 import PaymentExplainer from "./booking/PaymentExplainer";
 import BookingProgress, {
@@ -283,7 +285,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
   };
 
   const announcement = confirmed
-    ? `Booking confirmed. ${confirmed.totalUsdc} USDC is held in escrow until check-in.`
+    ? `Booking confirmed. ${formatUsdc(confirmed.totalUsdc)} is held in escrow until check-in.`
     : step
       ? stepAnnouncement(step)
       : "";
@@ -305,7 +307,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
   ) : nights === 0 ? (
     "Select dates"
   ) : (
-    `Book for ${totalPrice} USDC`
+    `Book for ${formatUsdc(totalPrice)}`
   );
 
   return (
@@ -317,12 +319,11 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         <h2 className="text-xl font-semibold">Book your stay</h2>
         <NetworkBadge />
       </div>
-      <p className="mt-2 text-muted-foreground">
-        <span className="text-lg font-bold text-foreground">
-          {pricePerNight} USDC
-        </span>{" "}
-        / night
-      </p>
+      <PricePerNight
+        amount={pricePerNight}
+        className="mt-2"
+        amountClassName="text-2xl"
+      />
       {bookedDatesQuery.isError && (
         <Alert
           variant="warning"
@@ -395,9 +396,9 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">
-              {pricePerNight} USDC × {nightsLabel(nights)}
+              {formatUsdc(pricePerNight)} × {nightsLabel(nights)}
             </span>
-            <span className="font-medium">{totalPrice} USDC</span>
+            <span className="font-medium">{formatUsdc(totalPrice)}</span>
           </div>
         </div>
       )}
@@ -405,7 +406,7 @@ const BookingCard = ({ pricePerNight, apartmentId }: BookingProps) => {
         <div className="flex items-center justify-between">
           <span className="font-semibold">Total</span>
           <span className="text-2xl font-bold">
-            {nights > 0 ? `${totalPrice} USDC` : "-- USDC"}
+            {nights > 0 ? formatUsdc(totalPrice) : "-- USDC"}
           </span>
         </div>
         <p

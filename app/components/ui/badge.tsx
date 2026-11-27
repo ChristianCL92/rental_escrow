@@ -18,6 +18,8 @@ const badgeVariants = cva(
           "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         link: "text-primary underline-offset-4 [a&]:hover:underline",
+        // Over photos: the ink ground, a little see-through.
+        inverse: "bg-inverse/85 text-inverse-foreground",
       },
     },
     defaultVariants: {

@@ -1,4 +1,4 @@
-import { Property } from "@/app/types/property";
+import { Property, PropertyType } from "@/app/types/property";
 
 export const SHARED_AMENITIES = [
   "Pool",
@@ -16,11 +16,11 @@ export const properties: Property[] = [
   {
     id: "room-001",
     apartmentId: 1,
-    name: "Room 001",
+    name: "Room 01",
     type: "room",
     pricePerNight: 30,
     description:
-      "Cozy room with double bed and private bathroom. Perfect for couples seeking a nature escape.",
+      "Panoramic room with a view of the mountain range and the nature reserve.",
     features: [
       "Double Bed",
       "Private Bathroom",
@@ -29,6 +29,7 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
+    beds: "Double bed",
     images: [
       {
         src: "/images/apt001.jpeg",
@@ -40,11 +41,11 @@ export const properties: Property[] = [
   {
     id: "room-002",
     apartmentId: 2,
-    name: "Room 002",
+    name: "Room 02",
     type: "room",
     pricePerNight: 30,
     description:
-      "Cozy room with double bed and private bathroom. Perfect for couples seeking a nature escape.",
+      "Panoramic room with a balcony and a view of the mountain range.",
     features: [
       "Double Bed",
       "Private Bathroom",
@@ -53,6 +54,7 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
+    beds: "Double bed",
     images: [
       {
         src: "/images/apt002.jpeg",
@@ -64,11 +66,11 @@ export const properties: Property[] = [
   {
     id: "room-003",
     apartmentId: 3,
-    name: "Room 003",
+    name: "Room 03",
     type: "room",
     pricePerNight: 30,
     description:
-      "Cozy room with double bed and private bathroom. Perfect for couples seeking a nature escape.",
+      "Panoramic room with a balcony and a view of the mountain range.",
     features: [
       "Double Bed",
       "Private Bathroom",
@@ -77,6 +79,7 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
+    beds: "Double bed",
     images: [
       {
         src: "/images/apt003.jpeg",
@@ -88,11 +91,11 @@ export const properties: Property[] = [
   {
     id: "room-004",
     apartmentId: 4,
-    name: "Room 004",
+    name: "Room 04",
     type: "room",
     pricePerNight: 30,
     description:
-      "Cozy room with double bed and private bathroom. Perfect for couples seeking a nature escape.",
+      "Panoramic room with a balcony and a view of the mountain range.",
     features: [
       "Double Bed",
       "Private Bathroom",
@@ -101,6 +104,7 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 2,
+    beds: "Double bed",
     images: [
       {
         src: "/images/apt004.jpeg",
@@ -113,11 +117,11 @@ export const properties: Property[] = [
   {
     id: "apartment-cave",
     apartmentId: 5,
-    name: "Apartment Cave",
+    name: "Cave apartment",
     type: "apartment",
     pricePerNight: 75,
     description:
-      "Private apartment with equipped kitchen and large balcony. Ideal for longer stays or small families.",
+      "Exclusive underground cave-style apartment, with a private balcony and a view of the nature reserve.",
     features: [
       "Equipped Kitchen",
       "Double Bed + Sofa Bed",
@@ -127,6 +131,7 @@ export const properties: Property[] = [
     ],
     sharedAmenities: SHARED_AMENITIES,
     maxGuests: 4,
+    beds: "Double bed + sofa bed",
     images: [
       {
         src: "/images/apt005.1.jpeg",
@@ -153,13 +158,28 @@ export const getPropertyById = (id: string): Property | undefined => {
   return properties.find((it) => it.id === id);
 };
 
-export const getPropertiesByType = (type: string): Property[] => {
+export const getPropertiesByType = (type: PropertyType): Property[] => {
   return properties.filter((it) => it.type === type);
 };
 
+export const getPropertyByApartmentId = (
+  apartmentId: number,
+): Property | undefined => {
+  return properties.find((it) => it.apartmentId === apartmentId);
+};
+
 export const getPriceByApartmentId = (apartmentId: number) => {
-  const id = properties.find(
-    (propertyId) => propertyId.apartmentId === apartmentId,
-  );
-  return id?.pricePerNight ?? 30;
+  return getPropertyByApartmentId(apartmentId)?.pricePerNight ?? 30;
+};
+
+/** The property's name, for places that only know its on-chain id. */
+export const getPropertyNameByApartmentId = (apartmentId: number): string => {
+  return getPropertyByApartmentId(apartmentId)?.name ?? `Stay ${apartmentId}`;
+};
+
+/** How a property type reads to guests: "Room", "Apartment". */
+export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
+  room: "Room",
+  apartment: "Apartment",
+  camping: "Camping",
 };

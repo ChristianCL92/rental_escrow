@@ -95,7 +95,7 @@ test.describe("Keyboard and screen-reader basics", () => {
   }) => {
     await page.goto("/properties/apartment-cave");
     const carousel = page.getByRole("region", {
-      name: "Apartment Cave photos",
+      name: "Cave apartment photos",
     });
     const photo = carousel.getByRole("img");
     const firstAlt = await photo.getAttribute("alt");

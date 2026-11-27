@@ -5,7 +5,7 @@ const Footer = () => {
   return (
     <footer className="focus-ring-on-dark bottom-0 w-full bg-inverse text-inverse-foreground p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="flex flex-wrap justify-around items-center gap-y-3">
-        <span>© El Solar Copyright {new Date().getFullYear()}</span>
+        <span>© {new Date().getFullYear()} El Solar</span>
         <div className="flex items-center gap-4">
           <Link
             href="/tools/marketing"

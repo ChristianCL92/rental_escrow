@@ -1,8 +1,11 @@
 import HomeHero from "@/components/HomeHero";
 import PropertyCard from "@/components/PropertyCard";
-import { properties, SHARED_AMENITIES } from "@/lib/properties";
+import { getPropertiesByType, SHARED_AMENITIES } from "@/lib/properties";
 
 const STAYS_ID = "stays";
+
+const rooms = getPropertiesByType("room");
+const apartments = getPropertiesByType("apartment");
 
 export default function Home() {
   return (
@@ -16,11 +19,26 @@ export default function Home() {
           >
             Stays
           </h2>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {properties.map((property) => (
-              <PropertyCard key={property.id} property={property} />
+          {/* The four rooms are one group, a full row from laptops up; the
+              apartment is a different kind of stay, so it gets its own,
+              wider card below them. */}
+          <ul
+            aria-label="Rooms"
+            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+          >
+            {rooms.map((property) => (
+              <li key={property.id}>
+                <PropertyCard property={property} />
+              </li>
             ))}
-          </div>
+          </ul>
+          <ul aria-label="Apartments" className="mt-6 grid gap-6">
+            {apartments.map((property) => (
+              <li key={property.id}>
+                <PropertyCard property={property} layout="wide" />
+              </li>
+            ))}
+          </ul>
         </section>
         <section className="mt-10">
           <h2 className="mb-6 text-2xl font-bold text-center">

@@ -82,7 +82,7 @@ test.describe("Phone booking bar", () => {
       /[A-Z][a-z]{2} \d{1,2}(-\d{1,2}| - [A-Z][a-z]{2} \d{1,2}) · 2 nights/,
     );
     await expect(announcer).toHaveText(
-      /^[A-Z][a-z]+ \d{1,2} to [A-Z][a-z]+ \d{1,2}, 2 nights, 60 USDC total$/,
+      /^[A-Z][a-z]+ \d{1,2} to [A-Z][a-z]+ \d{1,2}, 2 nights, 60\sUSDC total$/,
     );
 
     // Without a wallet, the bar's button connects one, like the card's.

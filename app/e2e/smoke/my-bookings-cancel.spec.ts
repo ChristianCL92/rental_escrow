@@ -30,7 +30,7 @@ const connect = async (page: Page, state: MockState) => {
 const openMyBookings = async (page: Page, state: MockState) => {
   await connect(page, state);
   await page.getByRole("button", { name: "Sign in with wallet" }).click();
-  await expect(page.getByText("Apartment #1")).toBeVisible();
+  await expect(page.getByText("Room 01")).toBeVisible();
 };
 
 const checkInDay = ESCROW_CHECK_IN.toISOString().slice(0, 10);
@@ -58,7 +58,7 @@ test.describe("Signing in to My Bookings", () => {
     expect(await page.evaluate(() => window.__fakeWallet.prompts)).toBe(0);
 
     await page.getByRole("button", { name: "Sign in with wallet" }).click();
-    await expect(page.getByText("Apartment #1")).toBeVisible();
+    await expect(page.getByText("Room 01")).toBeVisible();
     const [message] = await page.evaluate(() => window.__fakeWallet.messages);
     expect(message).toContain("Action: view");
     expect(lastRequest(state, "GET", "/api/bookings/guest")).toMatchObject({
@@ -76,7 +76,7 @@ test.describe("Signing in to My Bookings", () => {
     expect(await page.evaluate(() => window.__fakeWallet.prompts)).toBe(1);
 
     await page.reload();
-    await expect(page.getByText("Apartment #1")).toBeVisible();
+    await expect(page.getByText("Room 01")).toBeVisible();
     expect(await page.evaluate(() => window.__fakeWallet.prompts)).toBe(0);
     expect(
       state.calls.filter((c) => c === "POST /api/bookings/session"),
@@ -93,13 +93,33 @@ test.describe("Signing in to My Bookings", () => {
     const error = page.getByTestId("booking-error");
     await expect(error).toContainText("You cancelled in your wallet");
     await expect(error).toContainText("Signing is free");
-    await expect(page.getByText("Apartment #1")).toHaveCount(0);
+    await expect(page.getByText("Room 01")).toHaveCount(0);
     expect(state.calls).not.toContain("POST /api/bookings/session");
 
     await setWalletMode(page, "approve");
     await error.getByRole("button", { name: "Dismiss" }).click();
     await page.getByRole("button", { name: "Sign in with wallet" }).click();
-    await expect(page.getByText("Apartment #1")).toBeVisible();
+    await expect(page.getByText("Room 01")).toBeVisible();
+  });
+});
+
+test.describe("My Bookings copy", () => {
+  test("names the stay and shows amounts the way the rest of the site does", async ({
+    page,
+  }) => {
+    const state = createMockState();
+    await installFakeWallet(page, "approve");
+    await mockSolanaRpc(page, state);
+    await mockBookingApi(page, state);
+    await openMyBookings(page, state);
+
+    // The booking's on-chain id 1 is Room 01, by name, not "Apartment #1".
+    await expect(page.getByText(/Apartment #/)).toHaveCount(0);
+    await expect(page.getByText("Total paid")).toBeVisible();
+    await expect(page.getByText("90 USDC", { exact: true })).toBeVisible();
+
+    await expect(page.getByRole("button", { name: "Refresh" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Refetch" })).toHaveCount(0);
   });
 });
 

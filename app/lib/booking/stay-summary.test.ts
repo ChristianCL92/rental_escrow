@@ -36,6 +36,6 @@ describe("spokenStaySummary", () => {
   it("spells the stay out without abbreviations or separators", () => {
     expect(
       spokenStaySummary(new Date(2026, 10, 20), new Date(2026, 10, 23), 3, 90),
-    ).toBe("November 20 to November 23, 3 nights, 90 USDC total");
+    ).toBe("November 20 to November 23, 3 nights, 90\u00a0USDC total");
   });
 });

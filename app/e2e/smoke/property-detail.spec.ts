@@ -12,20 +12,67 @@ test.describe("Property detail page", () => {
     );
   });
 
-  test("Room 001 page renders name and price", async ({ page }) => {
+  test("Room 01 page renders name and price", async ({ page }) => {
     await page.goto("/properties/room-001");
 
-    await expect(page.getByRole("heading", { name: "Room 001" })).toBeVisible();
-    await expect(page.locator("text=30 USDC").first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Room 01", level: 1 }),
+    ).toBeVisible();
+    await expect(
+      // The card's own price; the phone booking bar inside it repeats it.
+      page.getByTestId("booking-card").getByText("30 USDC / night").first(),
+    ).toBeVisible();
   });
 
-  test("Apartment Cave renders correct price", async ({ page }) => {
+  test("Cave apartment renders correct price", async ({ page }) => {
     await page.goto("/properties/apartment-cave");
 
     await expect(
-      page.getByRole("heading", { name: "Apartment Cave" }),
+      page.getByRole("heading", { name: "Cave apartment", level: 1 }),
     ).toBeVisible();
-    await expect(page.locator("text=75 USDC").first()).toBeVisible();
+    await expect(
+      // The card's own price; the phone booking bar inside it repeats it.
+      page.getByTestId("booking-card").getByText("75 USDC / night").first(),
+    ).toBeVisible();
+  });
+
+  test("the title shows guests, beds and type; the price only in the booking card", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/properties/apartment-cave");
+
+    const facts = page.getByRole("list", { name: "At a glance" });
+    await expect(facts.getByRole("listitem")).toHaveText([
+      "Up to 4 guests",
+      "Double bed + sofa bed",
+      "Apartment",
+    ]);
+    // On a laptop the phone booking bar is hidden, so the nightly price
+    // appears exactly once: in the booking card.
+    await expect(
+      page.getByText("75 USDC / night").filter({ visible: true }),
+    ).toHaveCount(1);
+    await expect(
+      // The card's own price; the phone booking bar inside it repeats it.
+      page.getByTestId("booking-card").getByText("75 USDC / night").first(),
+    ).toBeVisible();
+  });
+
+  test("features are headed Features, also on the apartment", async ({
+    page,
+  }) => {
+    await page.goto("/properties/apartment-cave");
+
+    await expect(
+      page.getByRole("heading", { name: "Features", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("Room Features")).toHaveCount(0);
+    await expect(
+      page.getByText(
+        "Exclusive underground cave-style apartment, with a private balcony and a view of the nature reserve.",
+      ),
+    ).toBeVisible();
   });
 
   test('booking card shows "Book your stay"', async ({ page }) => {

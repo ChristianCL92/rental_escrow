@@ -128,7 +128,7 @@ describe("describeBookingError", () => {
       { stage: "payment", totalUsdc: 90 },
     );
     expect(result.title).toBe("Not enough USDC in this wallet");
-    expect(result.message).toContain("90 USDC");
+    expect(result.message).toContain("This stay costs 90\u00a0USDC.");
   });
 
   it("asks for USDC when the guest has no USDC account at all", () => {

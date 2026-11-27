@@ -16,6 +16,8 @@ export interface Property {
   features: string[];
   sharedAmenities: string[];
   maxGuests: number;
+  /** The beds, as guests read them: "Double bed". */
+  beds: string;
   images: PropertyImage[];
   available: boolean;
 }

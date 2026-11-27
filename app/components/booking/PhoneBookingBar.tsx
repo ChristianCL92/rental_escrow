@@ -5,6 +5,8 @@ import {
   nightsLabel,
   spokenStaySummary,
 } from "@/lib/booking/stay-summary";
+import { formatUsdc } from "@/lib/money";
+import PricePerNight from "@/components/PricePerNight";
 
 export interface PickedStay {
   checkIn: Date;
@@ -76,7 +78,7 @@ const PhoneBookingBar = ({
             className="flex min-h-11 min-w-0 cursor-pointer flex-col justify-center rounded-md text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
           >
             <span className="text-base leading-tight font-bold">
-              {stay.totalUsdc} USDC
+              {formatUsdc(stay.totalUsdc)}
             </span>
             <span className="truncate text-sm text-muted-foreground underline underline-offset-2">
               {compactStayDates(stay.checkIn, stay.checkOut)} ·{" "}
@@ -85,12 +87,11 @@ const PhoneBookingBar = ({
             <span className="sr-only">, change dates</span>
           </button>
         ) : (
-          <p className="min-w-0 text-muted-foreground">
-            <span className="text-lg font-bold text-foreground">
-              {pricePerNight} USDC
-            </span>{" "}
-            / night
-          </p>
+          <PricePerNight
+            amount={pricePerNight}
+            className="min-w-0"
+            amountClassName="text-lg"
+          />
         )}
         {stay ? (
           <Button
